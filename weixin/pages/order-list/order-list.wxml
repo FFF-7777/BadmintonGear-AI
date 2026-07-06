@@ -1,0 +1,28 @@
+<!-- 我的订单页面 -->
+<view class="container">
+  <view class="tab-bar">
+    <text class="tab-item {{currentTab === -1 ? 'active' : ''}}" bindtap="switchTab" data-status="-1">全部</text>
+    <text class="tab-item {{currentTab === 0 ? 'active' : ''}}" bindtap="switchTab" data-status="0">待支付</text>
+    <text class="tab-item {{currentTab === 1 ? 'active' : ''}}" bindtap="switchTab" data-status="1">已支付</text>
+    <text class="tab-item {{currentTab === 3 ? 'active' : ''}}" bindtap="switchTab" data-status="3">已完成</text>
+  </view>
+
+  <view class="order-card" wx:for="{{orders}}" wx:key="id">
+    <view class="order-header">
+      <text class="order-no">{{item.order_no}}</text>
+      <text class="order-status">{{statusMap[item.status]}}</text>
+    </view>
+    <view class="order-item" wx:for="{{item.items}}" wx:for-item="oi" wx:key="id">
+      <text class="oi-name">{{oi.product_name}}</text>
+      <text class="oi-price">¥{{oi.price}} x{{oi.quantity}}</text>
+    </view>
+    <view class="order-footer">
+      <text class="order-amount">合计: ¥{{item.pay_amount}}</text>
+      <text class="order-time">{{item.create_time}}</text>
+    </view>
+    <button wx:if="{{item.status === 0}}" class="btn-pay" size="mini" bindtap="payOrder" data-id="{{item.id}}">去支付</button>
+  </view>
+  <view wx:if="{{orders.length === 0}}" class="empty-tip">还没有订单，遇见喜欢的就带它回家吧</view>
+</view>
+
+<ai-float-btn />

@@ -1,0 +1,33 @@
+<!-- 确认订单页面 -->
+<view class="container">
+  <view class="address-section" bindtap="selectAddress">
+    <view class="address-main">
+      <view wx:if="{{selectedAddress}}" class="address-info">
+        <view class="addr-row">
+          <text class="name">{{selectedAddress.name}}</text>
+          <text class="phone">{{selectedAddress.phone}}</text>
+          <text wx:if="{{selectedAddress.is_default === 1}}" class="default-tag">默认</text>
+        </view>
+        <text class="addr-text">{{selectedAddress.address}}</text>
+      </view>
+      <view wx:else class="no-address">
+        <text class="no-address-text">请选择收货地址</text>
+        <text class="no-address-tip">点击选择或新增收货地址</text>
+      </view>
+    </view>
+    <text class="arrow">></text>
+  </view>
+
+  <view class="form-section">
+    <view class="form-item">
+      <text class="label">备注</text>
+      <input placeholder="选填" placeholder-class="placeholder" value="{{remark}}" bindinput="onRemark" />
+    </view>
+  </view>
+
+  <view class="order-footer">
+    <button class="btn-submit" bindtap="submitOrder" loading="{{loading}}">提交订单(模拟支付)</button>
+  </view>
+</view>
+
+<ai-float-btn />

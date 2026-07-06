@@ -1,0 +1,53 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+}
+
+.page-container {
+  padding: 20px;
+}
+
+.search-bar {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.table-wrapper {
+  width: 100%;
+}
+
+.pagination-bar {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 20px;
+}
+
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #409eff;
+}
+
+.stat-card .stat-label {
+  font-size: 14px;
+  color: #909399;
+  margin-top: 8px;
+}
+
+.chart-box {
+  width: 100%;
+  height: 350px;
+}

@@ -1,0 +1,24 @@
+<!-- 编辑收货地址 -->
+<view class="edit-page">
+  <view class="form-card">
+    <view class="form-item">
+      <text class="label">收货人</text>
+      <input class="field-input" placeholder="请输入收货人" placeholder-class="placeholder" value="{{name}}" bindinput="onName" />
+    </view>
+    <view class="form-item">
+      <text class="label">联系电话</text>
+      <input class="field-input" type="number" maxlength="11" placeholder="请输入手机号" placeholder-class="placeholder" value="{{phone}}" bindinput="onPhone" />
+    </view>
+    <view class="form-item textarea-item">
+      <text class="label">详细地址</text>
+      <textarea class="field-textarea" placeholder="省市区、街道、门牌号等" placeholder-class="placeholder" value="{{address}}" bindinput="onAddress" maxlength="255" />
+    </view>
+    <view class="form-item switch-item">
+      <text class="label">设为默认</text>
+      <switch checked="{{isDefault}}" color="#5b5ce2" bindchange="onDefaultChange" />
+    </view>
+  </view>
+  <button class="btn-save" bindtap="saveAddress" loading="{{saving}}">保存地址</button>
+</view>
+
+<ai-float-btn />

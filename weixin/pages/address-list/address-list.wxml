@@ -1,0 +1,27 @@
+<!-- 收货地址列表 -->
+<view class="address-page">
+  <view wx:if="{{list.length === 0}}" class="empty">
+    <text class="empty-text">暂无收货地址</text>
+    <text class="empty-tip">点击下方按钮添加地址</text>
+  </view>
+
+  <view wx:for="{{list}}" wx:key="id" class="address-card" bindtap="onTapItem" data-item="{{item}}">
+    <view class="address-top">
+      <text class="name">{{item.name}}</text>
+      <text class="phone">{{item.phone}}</text>
+      <text wx:if="{{item.is_default === 1}}" class="default-tag">默认</text>
+    </view>
+    <text class="address-text">{{item.address}}</text>
+    <view wx:if="{{!selectMode}}" class="address-actions" catchtap="stopBubble">
+      <text class="action-btn" catchtap="setDefault" data-id="{{item.id}}">设为默认</text>
+      <text class="action-btn" catchtap="goEdit" data-id="{{item.id}}">编辑</text>
+      <text class="action-btn danger" catchtap="removeAddress" data-id="{{item.id}}">删除</text>
+    </view>
+  </view>
+
+  <view class="footer-bar">
+    <button class="btn-add" bindtap="goAdd">{{selectMode ? '新增地址' : '新增收货地址'}}</button>
+  </view>
+</view>
+
+<ai-float-btn />

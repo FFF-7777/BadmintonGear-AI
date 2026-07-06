@@ -1,0 +1,16 @@
+<!-- 装备详情页 -->
+<view class="container" wx:if="{{product}}">
+  <image class="detail-img" src="{{product.image}}" mode="aspectFill" />
+  <view class="detail-info">
+    <text class="detail-price">¥{{product.price}}</text>
+    <text class="detail-name">{{product.name}}</text>
+    <text class="detail-desc">{{product.description}}</text>
+    <text class="detail-stock">库存: {{product.stock}} | 销量: {{product.sales}}</text>
+  </view>
+  <view class="detail-actions">
+    <button class="btn-cart" bindtap="addCart">加入购物车</button>
+    <button class="btn-buy" bindtap="buyNow">立即购买</button>
+  </view>
+</view>
+
+<ai-float-btn />

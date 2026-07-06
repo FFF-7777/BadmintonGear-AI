@@ -1,0 +1,20 @@
+/**
+ * 轮播图API
+ */
+import request from './request'
+
+export function getBannerList(params) {
+  return request.get('/banner/admin/list', { params })
+}
+
+export function createBanner(data) {
+  return request.post('/banner/admin/create', data)
+}
+
+export function updateBanner(id, data) {
+  return request.put(`/banner/admin/${id}`, data)
+}
+
+export function deleteBanner(id) {
+  return request.delete(`/banner/admin/${id}`)
+}

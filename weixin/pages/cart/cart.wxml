@@ -1,0 +1,30 @@
+<!-- 购物车页面 -->
+<view class="container">
+  <view class="cart-item" wx:for="{{cartList}}" wx:key="id">
+    <view class="cart-check" bindtap="toggleCheck" data-id="{{item.id}}">
+      <text class="check-icon {{item.checked ? 'checked' : ''}}">{{item.checked ? '✓' : ''}}</text>
+    </view>
+    <image class="cart-img" src="{{item.product_image}}" mode="aspectFill" />
+    <view class="cart-info">
+      <text class="cart-name">{{item.product_name}}</text>
+      <text class="cart-price">¥{{item.product_price}}</text>
+      <view class="cart-qty">
+        <text class="qty-btn" bindtap="changeQty" data-id="{{item.id}}" data-delta="-1">-</text>
+        <text class="qty-num">{{item.quantity}}</text>
+        <text class="qty-btn" bindtap="changeQty" data-id="{{item.id}}" data-delta="1">+</text>
+      </view>
+    </view>
+    <text class="cart-del" bindtap="deleteItem" data-id="{{item.id}}">删除</text>
+  </view>
+  <view wx:if="{{cartList.length === 0}}" class="empty-tip">购物车还是空的，去挑一件喜欢的吧</view>
+
+  <view class="cart-footer" wx:if="{{cartList.length > 0}}">
+    <view class="total-wrap">
+      <text class="total-label">合计</text>
+      <text class="total-text">¥{{totalPrice}}</text>
+    </view>
+    <button class="btn-settle" bindtap="goSettle">结算({{checkedCount}})</button>
+  </view>
+</view>
+
+<ai-float-btn />

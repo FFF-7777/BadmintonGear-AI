@@ -1,0 +1,38 @@
+<!-- 首页 - 轮播图+装备列表 -->
+<view class="container">
+  <view class="page-intro">
+    <view>
+      <text class="eyebrow">YOUNG PICKS</text>
+      <text class="page-title">今天想逛点什么？</text>
+    </view>
+    <view class="ai-badge">AI 推荐</view>
+  </view>
+
+  <!-- 轮播图 -->
+  <swiper class="banner-swiper" indicator-dots autoplay circular>
+    <swiper-item wx:for="{{banners}}" wx:key="id">
+      <image class="banner-img" src="{{item.image}}" mode="aspectFill" />
+    </swiper-item>
+  </swiper>
+
+  <!-- 装备列表 -->
+  <view class="section-heading">
+    <text class="section-title">热门装备</text>
+    <text class="section-subtitle">大家都在买</text>
+  </view>
+  <view class="product-grid">
+    <view class="product-item" wx:for="{{products}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+      <image class="product-img" src="{{item.image}}" mode="aspectFill" />
+      <view class="product-info">
+        <text class="product-name">{{item.name}}</text>
+        <view class="product-bottom">
+          <text class="product-price">¥{{item.price}}</text>
+          <text class="product-sales">{{item.sales}} 人已买</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{products.length === 0}}" class="empty-tip">好物正在上架，稍后再来逛逛</view>
+</view>
+
+<ai-float-btn />
