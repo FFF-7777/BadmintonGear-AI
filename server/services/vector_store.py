@@ -5,6 +5,7 @@ Chroma向量数据库服务
 import hashlib
 import json
 import logging
+import re
 import subprocess
 import sys as _sys
 from dataclasses import dataclass
@@ -36,7 +37,12 @@ from services.rag_pipeline import (
     QueryAnalysis,
     RetrievalCandidate,
     analyze_query,
+    extract_model_tokens,
     infer_category,
+    infer_brand,
+    infer_doc_type,
+    infer_series,
+    model_alias_variants,
     reciprocal_rank_fusion,
     rerank_candidates,
     split_knowledge_sections,
@@ -60,23 +66,31 @@ class VectorStoreService:
     """Chroma向量数据库服务类"""
 
     def __init__(self):
-        """初始化嵌入模型和向量存储"""
-        self.embeddings = OpenAIEmbeddings(
-            model=EMBEDDING_MODEL,
-            openai_api_key=OPENAI_API_KEY,
-            openai_api_base=OPENAI_BASE_URL,
-            dimensions=EMBEDDING_DIMENSIONS,
-            # 阿里云兼容接口只接受 str / list[str]，LangChain 默认会发送 token id 数组导致 400
-            check_embedding_ctx_length=False,
-            # 阿里云 text-embedding-v4 限制单次批量 <=10 条，超限返回 400；分批嵌入规避限制
-            chunk_size=10,
-        )
+        """初始化轻量对象；外部 API 客户端按需创建。"""
+        self._embeddings: Optional[OpenAIEmbeddings] = None
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=CHUNK_SIZE,
             chunk_overlap=CHUNK_OVERLAP,
             length_function=len,
         )
         self._vectorstore: Optional[Chroma] = None
+
+    @property
+    def embeddings(self) -> OpenAIEmbeddings:
+        if not OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY 未配置，知识库向量化与向量检索不可用")
+        if self._embeddings is None:
+            self._embeddings = OpenAIEmbeddings(
+                model=EMBEDDING_MODEL,
+                openai_api_key=OPENAI_API_KEY,
+                openai_api_base=OPENAI_BASE_URL,
+                dimensions=EMBEDDING_DIMENSIONS,
+                # 阿里云兼容接口只接受 str / list[str]，LangChain 默认会发送 token id 数组导致 400
+                check_embedding_ctx_length=False,
+                # 阿里云 text-embedding-v4 限制单次批量 <=10 条，超限返回 400；分批嵌入规避限制
+                chunk_size=10,
+            )
+        return self._embeddings
 
     @property
     def vectorstore(self) -> Chroma:
@@ -100,6 +114,11 @@ class VectorStoreService:
         file_type: str,
     ) -> List[Document]:
         """FAQ优先按单问答切分，普通长文回退到递归字符切分。"""
+        # 防御性清理：上游文件解析可能残留孤立代理码点（lone surrogate），
+        # 会导致后续 .encode("utf-8") / json.dumps 炸 UnicodeEncodeError。
+        _SURROGATE_RE = re.compile(r"[\ud800-\udfff]")
+        text = _SURROGATE_RE.sub("\ufffd", text) if text else text
+
         sections = split_knowledge_sections(text)
         documents: List[Document] = []
         if sections:
@@ -115,7 +134,12 @@ class VectorStoreService:
         fallback_category = infer_category(file_name) or "general"
         for index, document in enumerate(documents):
             section_title = str(document.metadata.get("section_title", "")).strip()
-            category = infer_category(f"{section_title} {document.page_content}") or fallback_category
+            context_text = f"{file_name} {section_title} {document.page_content}"
+            category = infer_category(context_text) or fallback_category
+            model_tokens = extract_model_tokens(context_text)
+            model_aliases: List[str] = []
+            for token in model_tokens:
+                model_aliases.extend(model_alias_variants(token))
             chunk_hash = hashlib.sha256(document.page_content.encode("utf-8")).hexdigest()[:16]
             document.metadata.update({
                 "file_id": file_id,
@@ -125,6 +149,11 @@ class VectorStoreService:
                 "section_title": section_title,
                 "chunk_index": index,
                 "chunk_id": f"{file_id}:{index}:{chunk_hash}",
+                "brand": infer_brand(context_text) or "",
+                "series": infer_series(context_text) or "",
+                "doc_type": infer_doc_type(context_text),
+                "model_tokens": list(dict.fromkeys(model_tokens)),
+                "model_aliases": list(dict.fromkeys(model_aliases)),
             })
         return documents
 
@@ -213,7 +242,12 @@ class VectorStoreService:
         analysis: QueryAnalysis,
         candidate_k: int,
     ) -> List[RetrievalCandidate]:
-        data = self.vectorstore.get(include=["documents", "metadatas"])
+        # P1c：按前置分类做 where 预过滤，减少全库拉取与内存扫描；
+        # _build_documents 总会写入 category（缺失时回退 "general"），故该过滤安全。
+        get_kwargs: Dict[str, object] = {"include": ["documents", "metadatas"]}
+        if analysis.category:
+            get_kwargs["where"] = {"category": analysis.category}
+        data = self.vectorstore.get(**get_kwargs)
         query_tokens = tokenize(analysis.expanded_query)
         candidates = []
         for content, metadata in zip(
@@ -232,10 +266,21 @@ class VectorStoreService:
             document_tokens = tokenize(content)
             if not query_tokens:
                 continue
-            coverage = len(query_tokens & document_tokens) / len(query_tokens)
+            metadata_text = " ".join(
+                str(part) for part in [
+                    metadata.get("section_title", ""),
+                    metadata.get("file_name", ""),
+                    metadata.get("brand", ""),
+                    metadata.get("series", ""),
+                    " ".join(metadata.get("model_aliases", []) or []),
+                ] if part
+            )
+            metadata_tokens = tokenize(metadata_text)
+            coverage = len(query_tokens & (document_tokens | metadata_tokens)) / len(query_tokens)
             title_tokens = tokenize(str(metadata.get("section_title", "")))
             title_coverage = len(query_tokens & title_tokens) / len(query_tokens)
-            score = min(1.0, coverage * 0.8 + title_coverage * 0.2)
+            metadata_coverage = len(query_tokens & metadata_tokens) / len(query_tokens) if metadata_tokens else 0.0
+            score = min(1.0, coverage * 0.65 + title_coverage * 0.15 + metadata_coverage * 0.20)
             if score > 0:
                 candidates.append(self._to_candidate(
                     Document(page_content=content, metadata=metadata),
@@ -342,25 +387,67 @@ vector_store_service = VectorStoreService()
 # 的 Chroma 操作放到独立子进程(services/chroma_runner.py)中执行：子进程崩溃只影响自身，
 # 主进程据此返回空结果/失败，保证服务整体可用、AI 客服可优雅降级。
 def _run_chroma_subprocess(payload: dict, timeout: int = 40) -> Optional[dict]:
-    """在子进程中执行 Chroma 操作；返回解析后的 JSON dict，失败返回 None。"""
+    """在子进程中执行 Chroma 操作。
+
+    - 成功：返回解析后的 JSON dict（可能含 _error 字段表示子进程内可捕获异常）。
+    - 原生崩溃（segfault，exit!=0）或解析失败：返回 None。
+    主进程据此区分"可诊断的业务错误"与"真正的崩溃"，给出精准提示。
+
+    Windows 兼容：使用纯字节模式（input=bytes, 不用 text=True），避免 Windows 管道
+    在 text=True 时将 UTF-8 中文按系统默认编码（GBK/GB2312）二次解码导致
+    "锟斤拷"乱码，并连带污染 API Key 等字段导致 401 鉴权失败。
+    """
     try:
         proc = subprocess.run(
             [_sys.executable, "-m", "services.chroma_runner"],
-            input=json.dumps(payload, ensure_ascii=False),
+            input=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             capture_output=True,
-            text=True,
             timeout=timeout,
             cwd=str(BASE_DIR),
-            encoding="utf-8",
         )
+    except subprocess.TimeoutExpired:
+        return None
     except Exception:
         return None
     if proc.returncode != 0:
+        # 真正的原生崩溃（如 chroma Rust 绑定 segfault），无法被 Python 捕获
         return None
     try:
-        return json.loads(proc.stdout)
+        return json.loads(proc.stdout.decode("utf-8", errors="replace"))
     except Exception:
         return None
+
+
+# 向量检索不可用时的文案（按真实根因生成，避免误导）
+_CHROMA_CRASH_NOTE = (
+    "向量检索不可用：向量库子进程异常退出（疑似 chroma 原生崩溃），已隔离，不影响其他接口。"
+)
+
+
+def _chroma_error_note(err: str) -> str:
+    """把子进程回传的可捕获异常翻译成对用户/运维友好的原因。"""
+    lowered = err.lower()
+    if "OPENAI_API_KEY" in err:
+        return "向量检索不可用：OPENAI_API_KEY 未配置或无效（请在项目根 .env 中填写正确的 API Key）。"
+    if "401" in err or "authentication" in lowered or "api key" in lowered:
+        return "向量检索不可用：向量化服务鉴权失败（OPENAI_API_KEY 无效）。"
+    if "timeout" in lowered or "timed out" in lowered:
+        return "向量检索不可用：向量化服务响应超时（请检查网络或 OPENAI_BASE_URL）。"
+    # HNSW 索引损坏（chroma 1.5.9 Windows 常见问题）
+    if any(kw in lowered for kw in ("hnsw", "segment reader", "compactor", "backfill")):
+        return ("向量库索引损坏（HNSW），已自动清理并重试。如果仍失败，"
+                "请重启后端服务后重新上传知识库文件。")
+    return f"向量检索不可用：{err}"
+
+
+def _degraded_chroma(note: str, route_errors: dict) -> SimpleNamespace:
+    return SimpleNamespace(
+        documents=[],
+        route_counts={},
+        route_errors=route_errors,
+        analysis=None,
+        note=note,
+    )
 
 
 def safe_search(
@@ -369,7 +456,7 @@ def safe_search(
     top_k: int = RAG_TOP_K,
     timeout: int = 40,
 ) -> SimpleNamespace:
-    """隔离式检索：子进程崩溃时返回空文档，不影响主进程。"""
+    """隔离式检索：子进程崩溃或异常时返回空文档与真实原因，不影响主进程。"""
     payload = {
         "mode": "search",
         "query": query,
@@ -381,12 +468,10 @@ def safe_search(
     }
     data = _run_chroma_subprocess(payload, timeout=timeout)
     if not data:
-        return SimpleNamespace(
-            documents=[],
-            route_counts={},
-            route_errors={"chroma": "vector store unavailable (subprocess crashed)"},
-            analysis=None,
-        )
+        return _degraded_chroma(_CHROMA_CRASH_NOTE, {"chroma": "vector store subprocess crashed (native)"})
+    err = data.get("_error") if isinstance(data, dict) else None
+    if err:
+        return _degraded_chroma(_chroma_error_note(err), {"chroma": err})
     docs = [
         Document(page_content=d["page_content"], metadata=d.get("metadata", {}))
         for d in data.get("documents", [])
@@ -407,7 +492,7 @@ def safe_add_documents(
     file_type: str,
     timeout: int = 120,
 ) -> tuple:
-    """隔离式入库：返回 (chunk_count, error_msg)。子进程崩溃时 chunk_count=0。"""
+    """隔离式入库：返回 (chunk_count, error_msg)。子进程崩溃或异常都返回错误原因。"""
     payload = {
         "mode": "add",
         "text": text,
@@ -418,5 +503,18 @@ def safe_add_documents(
     data = _run_chroma_subprocess(payload, timeout=timeout)
     if not data:
         return 0, "vector store subprocess crashed (chroma env incompatible)"
+    err = data.get("_error") if isinstance(data, dict) else None
+    if err:
+        return 0, err
     return data.get("chunk_count", 0), None
 
+
+def safe_delete_documents(file_id: int, timeout: int = 40) -> Optional[str]:
+    """隔离式删除：返回 None 表示成功，返回字符串表示错误原因（子进程崩溃/异常）。
+    直接调用 Chroma 删除可能触发原生崩溃，必须走子进程隔离（修复删除接口遗漏的隔离缺口）。"""
+    payload = {"mode": "delete", "file_id": file_id}
+    data = _run_chroma_subprocess(payload, timeout=timeout)
+    if not data:
+        return "vector store subprocess crashed (chroma env incompatible)"
+    err = data.get("_error") if isinstance(data, dict) else None
+    return err

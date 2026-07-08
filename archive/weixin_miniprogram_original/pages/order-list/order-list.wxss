@@ -1,0 +1,59 @@
+/* ============================================
+   订单列表 — iOS Young Style
+   分段控件 Tab + 圆角卡片
+   ============================================ */
+
+/* iOS 分段控件 */
+.segment-bar {
+  display: flex;
+  background: #F2F2F7;
+  border-radius: 14rpx;
+  margin-bottom: 24rpx;
+  padding: 6rpx;
+}
+.seg-item {
+  flex: 1; text-align: center; padding: 18rpx 0; border-radius: 12rpx;
+  font-size: 25rpx; color: #8E8E93; font-weight: 500;
+  transition: all 0.2s ease;
+}
+.seg-item.active {
+  color: #1C1C1E; background: #fff;
+  font-weight: 650; box-shadow: 0 4rpx 14rpx rgba(0,0,0,.06);
+}
+
+/* 订单卡片 */
+.order-card {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 28rpx;
+  margin-bottom: 18rpx;
+  box-shadow: var(--shadow-sm);
+}
+.order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.order-no { font-size: 23rpx; color: #8E8E93; }
+.order-status {
+  color: #5856D6; background: var(--primary-light);
+  border-radius: 999rpx; padding: 6rpx 16rpx; font-size: 22rpx; font-weight: 600;
+}
+.order-items { padding-bottom: 16rpx; }
+.order-item-row {
+  display: flex; justify-content: space-between; padding: 10rpx 0;
+  font-size: 27rpx; line-height: 1.5;
+}
+.oi-name { flex: 1; color: #1C1C1E; }
+.oi-price { color: #8E8E93; }
+
+.order-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 18rpx; border-top: 1rpx solid #F2F2F7;
+}
+.order-amount { color: var(--price); font-weight: 700; font-size: 28rpx; }
+.order-time { color: #AEAEB2; font-size: 21rpx; }
+.btn-pay {
+  min-width: 170rpx; height: 64rpx; line-height: 64rpx;
+  background: linear-gradient(145deg, #7C73F0, #5856D6); color: #fff;
+  border-radius: 20rpx; margin-top: 18rpx auto 0; font-weight: 600;
+  font-size: 26rpx; border: none;
+}
+.btn-pay:active { opacity: 0.85; transform: scale(0.97); }

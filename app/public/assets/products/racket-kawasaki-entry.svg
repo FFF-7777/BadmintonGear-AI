@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-label="KAWASAKI entry racket">
+  <rect width="640" height="420" rx="42" fill="#fff7ed"/>
+  <circle cx="445" cy="132" r="92" fill="#ffedd5"/>
+  <ellipse cx="386" cy="148" rx="77" ry="104" fill="none" stroke="#d4001a" stroke-width="18"/>
+  <path d="M356 225L224 348" stroke="#111827" stroke-width="22" stroke-linecap="round"/>
+  <path d="M218 352l-52 46" stroke="#f97316" stroke-width="30" stroke-linecap="round"/>
+  <path d="M334 96h104M323 132h128M320 167h134M336 200h103M378 50v194M417 52v184" stroke="#fed7aa" stroke-width="5"/>
+  <text x="48" y="76" fill="#d4001a" font-family="Arial" font-size="34" font-weight="900">KAWASAKI</text>
+  <text x="48" y="114" fill="#0f172a" font-family="Arial" font-size="28" font-weight="900">ENTRY BALANCE</text>
+</svg>

@@ -1,0 +1,100 @@
+/* Markdown 渲染样式（premium reading） */
+.md-body {
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+.md-body p {
+  margin: 0 0 14px;
+}
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  margin: 26px 0 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary);
+  scroll-margin-top: 80px;
+}
+.md-body h1 {
+  font-size: 24px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--divider);
+}
+.md-body h2 {
+  font-size: 20px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--divider);
+}
+.md-body h3 { font-size: 17px; }
+.md-body h4 { font-size: 15px; color: var(--text-secondary); }
+.md-body h5 { font-size: 14px; color: var(--text-secondary); }
+.md-body h6 { font-size: 13px; color: var(--text-tertiary); }
+
+.md-body ul.md-list {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+.md-body li {
+  margin: 6px 0;
+}
+.md-body li::marker {
+  color: var(--primary);
+}
+
+.md-body blockquote {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 4px solid var(--primary);
+  background: var(--primary-light);
+  border-radius: 0 12px 12px 0;
+  color: var(--text-secondary);
+}
+.md-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.md-body code {
+  background: rgba(20, 18, 40, 0.06);
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: #b3424a;
+}
+.md-body pre {
+  background: #1c1c1e;
+  color: #f5f5f7;
+  padding: 14px 16px;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin: 14px 0 18px;
+}
+.md-body pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.md-body strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.md-body em {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* 思考中光标动画 */
+.streaming-cursor::after {
+  content: "▍";
+  animation: blink 1s step-end infinite;
+  color: var(--primary);
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}

@@ -1,0 +1,159 @@
+/* ============================================
+   iOS Young Style — 全局设计变量与基础组件
+   设计语言：明亮活泼 · 圆角卡片 · 毛玻璃效果 · SF Pro 字体层级
+   ============================================ */
+
+page {
+  /* ---- iOS 设计令牌 ---- */
+  --primary: #5856D6;           /* 主色：活力紫（接近参考图 #5b5ce2） */
+  --primary-light: #EDEAFF;     /* 主色浅底 */
+  --primary-gradient: linear-gradient(135deg, #7C73F0 0%, #5856D6 100%);
+  --price: #FF3B30;             /* 价格红（iOS System Red） */
+  --success: #34C759;           /* 成功绿 */
+  --warning: #FF9500;           /* 警告橙 */
+  --text-primary: #1C1C1E;      /* 主文字 */
+  --text-secondary: #8E8E93;    /* 次要文字 */
+  --text-tertiary: #AEAEB2;     /* 三级文字 */
+  --bg-page: #F5F5F7;           /* 页面背景（iOS System Gray 6） */
+  --bg-card: #FFFFFF;           /* 卡片背景 */
+  --border-color: rgba(0, 0, 0, 0.06);   /* 分隔线/边框 */
+  --divider: #E5E5EA;           /* iOS 分组分隔线 */
+  --radius-sm: 12rpx;           /* 小圆角 */
+  --radius-md: 20rpx;           /* 中圆角（卡片） */
+  --radius-lg: 28rpx;           /* 大圆角（大卡片/按钮） */
+  --radius-xl: 36rpx;           /* 超大圆角 */
+  --shadow-sm: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8rpx 24rpx rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 16rpx 40rpx rgba(88, 86, 214, 0.12);
+
+  background-color: var(--bg-page);
+  font-size: 28rpx;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- 全局容器 ---- */
+.container {
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+/* ---- iOS 风格主按钮 ---- */
+.btn-primary {
+  min-height: 92rpx;
+  background: var(--primary-gradient);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  padding: 22rpx 32rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.btn-primary:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* ---- iOS 次按钮（描边风格）---- */
+.btn-outline {
+  min-height: 92rpx;
+  background: var(--bg-card);
+  color: var(--primary);
+  border: 2rpx solid var(--primary-light);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  padding: 22rpx 32rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+/* ---- 空态提示 ---- */
+.empty-tip {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 120rpx 40rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+/* ---- iOS 卡片通用样式 ---- */
+.ios-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 28rpx;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- iOS 分组列表容器 ---- */
+.ios-group {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- 底部安全栏毛玻璃效果 ---- */
+.glass-bar {
+  position: fixed;
+  z-index: 100;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1rpx solid rgba(0, 0, 0, 0.04);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---- 全局按钮重置 ---- */
+button::after { border: none; }
+button { font-family: inherit; }
+button[disabled] { opacity: 0.45; }
+
+/* ---- 图片占位 ---- */
+image {
+  background-color: #F0F0F5;
+}
+
+/* ---- iOS 价格文字 ---- */
+.price-text {
+  color: var(--price);
+  font-weight: 700;
+}
+
+/* ---- iOS 标签徽章 ---- */
+.ios-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+.ios-badge--primary {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+.ios-badge--danger {
+  color: var(--price);
+  background: rgba(255, 59, 48, 0.08);
+}
+
+/* ---- iOS 箭头指示器 ---- */
+.ios-arrow {
+  color: var(--text-tertiary);
+  font-size: 32rpx;
+  margin-left: auto;
+}
+
+/* ---- 过渡动画基础 ---- */
+.page-transition {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}

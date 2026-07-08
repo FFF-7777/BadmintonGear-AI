@@ -1,13 +1,14 @@
 """
 装备路由
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.category import Category
 from models.product import Product
 from schemas.schemas import ProductCreate, ProductUpdate, ProductOut
+from services.product_import import XLSX_MIME, build_template_xlsx, import_products, parse_import_rows
 from utils.deps import get_current_admin
 from utils.resp import success, error, page_result
 
@@ -118,3 +119,39 @@ def delete_product(
     db.delete(product)
     db.commit()
     return success(None, "删除成功")
+
+
+@router.get("/admin/import-template")
+def download_import_template(
+    category_id: int = Query(..., description="品类ID"),
+    admin=Depends(get_current_admin),
+):
+    if category_id not in {1, 2, 3, 4}:
+        return error("仅支持四个固定品类模板", 400)
+    content = build_template_xlsx(category_id)
+    filename = f"product-import-template-{category_id}.xlsx"
+    return Response(
+        content=content,
+        media_type=XLSX_MIME,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/admin/import")
+def import_product_excel(
+    file: UploadFile = File(...),
+    category_id: int = Query(None, description="可选，品类ID；为空时按模板字段自动识别"),
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin),
+):
+    filename = (file.filename or "").strip()
+    if not filename:
+        return error("文件名不能为空")
+    try:
+        raw = file.file.read()
+        rows = parse_import_rows(filename, raw)
+        result = import_products(db, rows, category_id=category_id)
+        return success(result, f"成功导入 {result['success_count']} 条装备数据")
+    except Exception as exc:
+        db.rollback()
+        return error(f"导入失败: {str(exc)}", 400)

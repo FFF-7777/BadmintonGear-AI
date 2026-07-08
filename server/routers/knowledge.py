@@ -2,6 +2,7 @@
 知识库管理路由
 支持txt/docx/pdf/markdown文件上传、解析、向量化
 """
+import logging
 import shutil
 import uuid
 from pathlib import Path
@@ -9,12 +10,15 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, UploadFile, File, Query
 from sqlalchemy.orm import Session
 
+logger = logging.getLogger(__name__)
+
 from config import KNOWLEDGE_DIR
 from database import get_db
 from models.knowledge import KnowledgeFile
 from schemas.schemas import KnowledgeFileOut
 from services.file_parser import parse_file, get_file_type
-from services.vector_store import vector_store_service, safe_add_documents, safe_search
+from services.rag_pipeline import extract_model_tokens, infer_brand, infer_doc_type, infer_series
+from services.vector_store import vector_store_service, safe_add_documents, safe_search, safe_delete_documents
 from utils.deps import get_current_admin
 from utils.resp import success, error, page_result
 
@@ -74,10 +78,16 @@ def upload_knowledge(
         return error("知识库文件不能超过10MB")
 
     # 创建数据库记录
+    initial_text = filename
+    model_aliases = extract_model_tokens(initial_text)
     kf = KnowledgeFile(
         file_name=filename,
         file_type=file_type,
         file_path=str(save_path).replace("\\", "/"),
+        brand=infer_brand(initial_text) or None,
+        series=infer_series(initial_text) or None,
+        model_aliases=",".join(model_aliases) if model_aliases else None,
+        doc_type=infer_doc_type(initial_text),
         file_size=file_size,
         status=0,
     )
@@ -88,6 +98,11 @@ def upload_knowledge(
     # 解析并向量化；同步路由会由 FastAPI 在线程池执行，不阻塞事件循环。
     # 使用子进程隔离的 safe_add_documents，避免 chroma 原生崩溃拖垮服务进程。
     text = parse_file(str(save_path), file_type)
+    kf.brand = infer_brand(f"{filename} {text[:2000]}") or kf.brand
+    kf.series = infer_series(f"{filename} {text[:2000]}") or kf.series
+    file_models = extract_model_tokens(f"{filename} {text[:2000]}")
+    kf.model_aliases = ",".join(file_models) if file_models else kf.model_aliases
+    kf.doc_type = infer_doc_type(f"{filename} {text[:2000]}")
     chunk_count, add_err = safe_add_documents(
         text,
         kf.id,
@@ -123,6 +138,11 @@ def vectorize_knowledge(
 
     try:
         text = parse_file(kf.file_path, kf.file_type)
+        kf.brand = infer_brand(f"{kf.file_name} {text[:2000]}") or kf.brand
+        kf.series = infer_series(f"{kf.file_name} {text[:2000]}") or kf.series
+        file_models = extract_model_tokens(f"{kf.file_name} {text[:2000]}")
+        kf.model_aliases = ",".join(file_models) if file_models else kf.model_aliases
+        kf.doc_type = infer_doc_type(f"{kf.file_name} {text[:2000]}")
         chunk_count, add_err = safe_add_documents(
             text,
             kf.id,
@@ -160,7 +180,7 @@ def search_test(
 
     if result.analysis is None:
         return success({
-            "note": "向量检索当前不可用（chroma 在该环境原生崩溃，已隔离）。以下为降级信息。",
+            "note": getattr(result, "note", "向量检索当前不可用（已隔离）。以下为降级信息。"),
             "route_counts": result.route_counts,
             "route_errors": result.route_errors,
             "results": [],
@@ -173,6 +193,9 @@ def search_test(
             "expanded_query": result.analysis["expanded_query"],
             "category": result.analysis["category"],
             "queries": result.analysis["queries"],
+            "scope": result.analysis.get("scope"),
+            "model_tokens": result.analysis.get("model_tokens", []),
+            "compare_targets": result.analysis.get("compare_targets", []),
         },
         "route_counts": result.route_counts,
         "route_errors": result.route_errors,
@@ -202,7 +225,11 @@ def delete_knowledge(
     if not kf:
         return error("文件不存在", 404)
 
-    vector_store_service.delete_by_file_id(kf.id)
+    # P1b：走子进程隔离删除，避免 chroma 原生崩溃拖死主进程；
+    # 向量删除失败不阻断文件记录与磁盘清理。
+    delete_err = safe_delete_documents(kf.id)
+    if delete_err:
+        logger.warning("向量数据删除失败（已隔离，不影响记录删除）：%s", delete_err)
     try:
         Path(kf.file_path).unlink(missing_ok=True)
     except Exception:

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" role="img" aria-label="VICTOR logo">
+  <rect x="22" y="32" width="276" height="96" rx="8" fill="#123f8c"/>
+  <rect x="22" y="108" width="276" height="20" rx="8" fill="#f28c16"/>
+  <path d="M60 75l22 19 22-19-22 7-22-7z" fill="#fff"/>
+  <circle cx="59" cy="72" r="5" fill="#fff"/>
+  <circle cx="105" cy="72" r="5" fill="#fff"/>
+  <text x="124" y="94" fill="#fff" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="32" font-weight="900">VICTOR</text>
+</svg>

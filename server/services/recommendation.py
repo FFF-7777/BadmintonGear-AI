@@ -18,7 +18,13 @@ from typing import Dict, List, Optional, Sequence
 from sqlalchemy.orm import Session
 
 from models.product import Product
-from services.rag_pipeline import GuideConstraints, CATEGORY_NAME_BY_ID
+from services.rag_pipeline import (
+    CATEGORY_NAME_BY_ID,
+    GuideConstraints,
+    extract_model_tokens,
+    normalize_model_token,
+    normalize_text,
+)
 
 
 # 水平有序映射，用于"商品要求高于用户水平"的判定
@@ -44,6 +50,108 @@ def retrieve_candidates(db: Session, constraints: GuideConstraints) -> List[Prod
     if constraints.budget_min is not None:
         query = query.filter(Product.price >= constraints.budget_min)
     return query.all()
+
+
+def _ensure_list(value) -> List[str]:
+    if not value:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [part.strip() for part in str(value).split(",") if part.strip()]
+
+
+def derive_display_tags(product: Product) -> List[str]:
+    """根据结构化字段推导展示标签。"""
+    tags = _ensure_list(product.tags) + _ensure_list(product.manual_tags)
+    specs = product.specs or {}
+    if product.category_id == 1:
+        if specs.get("balance") == "head-heavy":
+            tags.append("进攻")
+        if specs.get("balance") == "head-light":
+            tags.append("速度")
+        if specs.get("shaft_flex") in ("flexible", "medium"):
+            tags.append("新手友好")
+    elif product.category_id == 2:
+        if specs.get("durability") in ("high", "very_high"):
+            tags.append("耐打")
+        if specs.get("repulsion") in ("high", "very_high"):
+            tags.append("高弹")
+    elif product.category_id == 3:
+        if specs.get("material") == "goose_feather":
+            tags.append("飞行稳定")
+        if specs.get("usage_scene"):
+            tags.append(str(specs["usage_scene"]))
+    elif product.category_id == 4:
+        if float(specs.get("cushion_score", 0) or 0) >= 8.5:
+            tags.append("高缓震")
+        if specs.get("width_fit") in ("wide", "wide-friendly"):
+            tags.append("宽脚友好")
+    return list(dict.fromkeys(tag for tag in tags if tag))
+
+
+def serialize_product_card(product: Product, score: float, reason: str) -> Dict:
+    return {
+        "id": product.id,
+        "name": product.name,
+        "brand": product.brand or (product.specs or {}).get("brand", ""),
+        "series": product.series or "",
+        "price": float(product.price),
+        "image": product.image or "",
+        "category_id": product.category_id,
+        "category_name": CATEGORY_NAME_BY_ID.get(product.category_id, ""),
+        "score": round(score, 3),
+        "reason": reason,
+        "specs": product.specs or {},
+        "tags": derive_display_tags(product),
+        "manual_tags": _ensure_list(product.manual_tags),
+    }
+
+
+def match_products_for_query(
+    db: Session,
+    query_text: str,
+    limit: int = 4,
+) -> List[Dict]:
+    """按型号/系列/别名直连结构化商品库，优先服务具体型号与对比类问题。"""
+    normalized_query = normalize_text(query_text)
+    if not normalized_query:
+        return []
+    query_tokens = {normalize_model_token(token) for token in extract_model_tokens(normalized_query)}
+    if not query_tokens and len(normalized_query) < 2:
+        return []
+
+    candidates: List[Dict] = []
+    for product in db.query(Product).filter(Product.status == 1).all():
+        name_tokens = {normalize_model_token(token) for token in extract_model_tokens(product.name)}
+        alias_tokens = {normalize_model_token(token) for token in _ensure_list(product.model_aliases)}
+        pool = {
+            normalize_model_token(product.name),
+            normalize_model_token(product.series or ""),
+            normalize_model_token(product.brand or ""),
+            *name_tokens,
+            *alias_tokens,
+        }
+        overlap = query_tokens & pool if query_tokens else set()
+        haystack = normalize_text(" ".join(filter(None, [
+            product.name,
+            product.brand or "",
+            product.series or "",
+            " ".join(_ensure_list(product.model_aliases)),
+        ]))).lower()
+
+        score = 0.0
+        if overlap:
+            score += 1.0
+        if normalized_query.lower() in haystack:
+            score += 0.7
+        if score > 0:
+            reason = "型号或系列名直接命中"
+            if overlap:
+                reason = f"识别到型号别名：{', '.join(sorted(overlap))}"
+            candidates.append(serialize_product_card(product, score, reason))
+
+    candidates.sort(key=lambda item: item["score"], reverse=True)
+    return candidates[:limit]
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +200,7 @@ def _budget_fit(product: Product, constraints: GuideConstraints) -> float:
 
 
 def _spec_fit(product: Product, constraints: GuideConstraints) -> float:
-    """基于规格的软性适配（细分参数加分）。"""
+    """基于规格的软性适配（细分参数加分）。覆盖全部 4 个品类。"""
     specs = product.specs or {}
     score = 0.8
     if product.category_id == 1:  # 球拍
@@ -112,6 +220,26 @@ def _spec_fit(product: Product, constraints: GuideConstraints) -> float:
                 score = 1.0
             elif cushion >= 8.0:
                 score = max(score, 0.9)
+    elif product.category_id == 2:  # 球线（P2d：原仅球拍/球鞋有效，现补软性适配）
+        gauge = specs.get("gauge")
+        if gauge is not None:
+            try:
+                gauge_f = float(gauge)
+            except (TypeError, ValueError):
+                gauge_f = None
+            if gauge_f is not None:
+                # 新手更耐打优先 → 较粗线（>=0.68mm）加分
+                if constraints.level == "beginner" and gauge_f >= 0.68:
+                    score = max(score, 0.9)
+                # 控球/拉吊打法 → 细线（<=0.66mm）手感更好
+                if constraints.style == "control" and gauge_f <= 0.66:
+                    score = max(score, 0.9)
+    elif product.category_id == 3:  # 羽毛球（P2d）
+        material = specs.get("material")
+        if constraints.level == "beginner" and material == "duck_feather":
+            score = max(score, 0.9)  # 新手性价比优先，鸭毛更实惠
+        if constraints.level in ("advanced", "competitive") and material == "goose_feather":
+            score = max(score, 0.95)  # 高频训练/比赛更稳定耐打
     return score
 
 
@@ -228,14 +356,7 @@ def score_and_rank(
         ) / _WEIGHT_SUM
 
         ranked.append({
-            "id": product.id,
-            "name": product.name,
-            "price": float(product.price),
-            "category_id": product.category_id,
-            "category_name": CATEGORY_NAME_BY_ID.get(product.category_id, ""),
-            "score": round(final, 3),
-            "reason": _build_reason(product, constraints),
-            "specs": product.specs or {},
+            **serialize_product_card(product, final, _build_reason(product, constraints)),
         })
 
     ranked.sort(key=lambda item: item["score"], reverse=True)

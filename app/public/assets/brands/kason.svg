@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" role="img" aria-label="KASON logo">
+  <rect x="22" y="32" width="276" height="96" rx="8" fill="#ed6b16"/>
+  <path d="M55 100V58h24v16l31-16h38l-44 23 49 19h-41L79 86v14H55z" fill="#fff"/>
+  <path d="M98 66c28 0 51-5 76-18-19 19-41 30-70 34l-6-16z" fill="#fff"/>
+  <text x="138" y="93" fill="#fff" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="29" font-style="italic" font-weight="900">Kason</text>
+</svg>

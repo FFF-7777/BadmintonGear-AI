@@ -1,0 +1,48 @@
+<!-- 购物车页面 — iOS Young Style -->
+<view class="container cart-page">
+  <!-- 购物车商品列表 -->
+  <view class="cart-list">
+    <view class="cart-card" wx:for="{{cartList}}" wx:key="id" hover-class="card-hover">
+      <!-- 勾选框 -->
+      <view class="check-wrap" bindtap="toggleCheck" data-id="{{item.id}}">
+        <view class="check-circle {{item.checked ? 'checked' : ''}}">
+          <text class="check-mark" wx:if="{{item.checked}}">✓</text>
+        </view>
+      </view>
+
+      <!-- 商品图 -->
+      <image class="cart-img" src="{{item.product_image}}" mode="aspectFill" />
+
+      <!-- 商品信息 -->
+      <view class="cart-info">
+        <text class="cart-name">{{item.product_name}}</text>
+        <text class="cart-price">¥{{item.product_price}}</text>
+        <view class="qty-row">
+          <view class="qty-btn" bindtap="changeQty" data-id="{{item.id}}" data-delta="-1">
+            <text>−</text>
+          </view>
+          <text class="qty-num">{{item.quantity}}</text>
+          <view class="qty-btn" bindtap="changeQty" data-id="{{item.id}}" data-delta="1">
+            <text>+</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 删除 -->
+      <text class="cart-del" bindtap="deleteItem" data-id="{{item.id}}">删除</text>
+    </view>
+  </view>
+
+  <view wx:if="{{cartList.length === 0}}" class="empty-tip">购物车还是空的，去挑一件喜欢的吧</view>
+
+  <!-- 底部结算栏（毛玻璃效果） -->
+  <view class="checkout-bar" wx:if="{{cartList.length > 0}}">
+    <view class="total-area">
+      <text class="total-label">合计</text>
+      <text class="total-amount">¥{{totalPrice}}</text>
+    </view>
+    <button class="btn-checkout" bindtap="goSettle">结算({{checkedCount}})</button>
+  </view>
+</view>
+
+<ai-float-btn />

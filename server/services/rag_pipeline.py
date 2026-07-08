@@ -4,33 +4,93 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Sequence, Set
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
 CATEGORY_KEYWORDS = {
-    "after_sale": ("售后", "退货", "退款", "换货", "维修", "保修", "运费", "拒收"),
-    "logistics": ("物流", "快递", "包裹", "发货", "签收", "配送", "运输", "快递柜"),
-    "product": ("装备", "质量", "颜色", "尺寸", "款式", "配件", "赠品", "保质期", "正品"),
-    "account": ("账号", "账户", "登录", "密码", "注销", "异常", "被盗"),
-    "payment": ("支付", "扣款", "付款", "价格", "降价", "优惠", "积分", "会员"),
-    "invoice": ("发票", "开票", "税务"),
+    "racket": ("球拍", "拍子", "中杆", "平衡点", "拍框", "甜区", "挥重"),
+    "string": ("球线", "穿线", "线径", "磅数", "弹性", "耐打", "掉磅"),
+    "shuttle": ("羽毛球", "鹅毛", "鸭毛", "球速", "耐打", "飞行", "稳定"),
+    "shoes": ("球鞋", "缓震", "支撑", "防滑", "脚型", "宽脚", "膝盖"),
+    "brand": ("品牌", "尤尼克斯", "李宁", "胜利", "川崎", "薰风", "凯胜"),
+    "selection": ("推荐", "对比", "怎么选", "适合", "预算", "新手", "进阶"),
 }
 
 SYNONYM_GROUPS = (
-    ("物流", "快递", "包裹", "配送"),
-    ("退货退款", "退货", "退款", "售后"),
-    ("质量问题", "故障", "损坏", "瑕疵"),
-    ("支付", "付款", "扣款"),
-    ("发票", "开票"),
-    ("账号", "账户"),
+    ("球拍", "拍子", "羽毛球拍"),
+    ("球线", "拍线", "穿线"),
+    ("羽毛球", "鹅毛", "鸭毛"),
+    ("球鞋", "鞋子", "羽毛球鞋"),
+    ("对比", "比较", "区别"),
+    ("预算", "价格", "参考价"),
 )
 
-FOLLOW_UP_MARKERS = ("这个", "那个", "它", "上面", "刚才", "怎么", "怎么办", "呢", "谁承担", "可以吗")
+_SHUTTLE_EXCLUDE = ("拍", "鞋", "线", "球拍", "球鞋", "拍线", "球线")
+
+FOLLOW_UP_MARKERS = ("这个", "那个", "它", "上面", "刚才", "怎么", "怎么办", "呢", "可以吗")
 NUMBERED_TITLE_RE = re.compile(
     r"^\s*(?:#{1,6}\s*)?(?:\*\*)?(\d+)[.、．]\s*(.+?)(?:\*\*)?\s*$"
 )
+MODEL_HEADING_RE = re.compile(
+    r"^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?([A-Za-z]{1,12}\s*[- ]?\d{1,4}(?:\s*[A-Za-z0-9-]{1,6})?|(?:天斧|战戟|极速|神速|雷霆|弓箭|音速|疾光|65Z)\s*[- ]?\d{1,4}(?:\s*[A-Za-z0-9-]{1,6})?).*$"
+)
 WORD_RE = re.compile(r"[a-zA-Z0-9]+")
 CHINESE_RE = re.compile(r"[\u4e00-\u9fff]+")
+ASCII_MODEL_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9])(?:astrox|arcsaber|nanoflare|auraspeed|jetspeed|halbertec|ax|arcs|nf|as|js|tk|hx|pc)\s*[- ]?\d{1,4}[a-z0-9]{0,4}(?![A-Za-z0-9])"
+)
+DIGIT_MODEL_RE = re.compile(r"(?i)(?<![A-Za-z0-9])\d{2,4}\s*[a-z]{1,3}\d{0,2}(?![A-Za-z0-9])")
+CHINESE_MODEL_RE = re.compile(
+    r"(?:天斧|战戟|极速|神速|雷霆|弓箭|音速|疾光|锋影|驭|隼|65Z)\s*[- ]?\d{1,4}(?:\s*[A-Za-z]{1,4})?"
+)
+COMPARE_SPLIT_RE = re.compile(r"\s*(?:和|跟|与|vs\.?|VS\.?|还是)\s*")
+
+BADMINTON_GENERAL_KEYWORDS = (
+    "热身", "拉伸", "步法", "发力", "握拍", "高远球", "杀球", "吊球", "搓球", "勾对角",
+    "上网", "启动", "启动步", "米字步", "交叉步", "并步", "手法", "训练", "练习",
+    "发球", "接发", "站位", "轮转", "步伐", "体能", "如何打", "怎么打", "怎么练",
+)
+BADMINTON_CONTEXT_WORDS = (
+    "羽毛球", "单打", "双打", "混双", "后场", "前场", "中场", "网前", "平抽", "防守",
+    "进攻", "控球", "连贯", "挥拍", "回球",
+)
+
+SERIES_CODE_VARIANTS = {
+    "AX": ("ASTROX", "天斧"),
+    "ARCS": ("ARCSABER", "弓箭"),
+    "NF": ("NANOFLARE", "疾光"),
+    "AS": ("AURASPEED", "神速"),
+    "JS": ("JETSPEED", "极速"),
+    "HAL": ("HALBERTEC", "战戟"),
+    "TK": ("THRUSTER", "突击"),
+    "HX": ("HYPERNANO", "铁锤"),
+    "65Z": ("POWER CUSHION 65Z", "65Z"),
+}
+SERIES_CANONICAL_REPLACEMENTS = (
+    ("ASTROX", "AX"),
+    ("天斧", "AX"),
+    ("ARCSABER", "ARCS"),
+    ("弓箭", "ARCS"),
+    ("NANOFLARE", "NF"),
+    ("疾光", "NF"),
+    ("AURASPEED", "AS"),
+    ("神速", "AS"),
+    ("JETSPEED", "JS"),
+    ("极速", "JS"),
+    ("HALBERTEC", "HAL"),
+    ("战戟", "HAL"),
+    ("THRUSTER", "TK"),
+    ("突击", "TK"),
+    ("POWERCUSHION", "PC"),
+)
+BRAND_ALIASES = {
+    "YONEX": ("YONEX", "YY", "尤尼克斯", "尤尼"),
+    "LI-NING": ("LI-NING", "LINING", "李宁"),
+    "VICTOR": ("VICTOR", "胜利", "维克多"),
+    "KAWASAKI": ("KAWASAKI", "川崎"),
+    "KUMPOO": ("KUMPOO", "薰风"),
+    "KASON": ("KASON", "凯胜"),
+}
 
 
 @dataclass(frozen=True)
@@ -41,6 +101,9 @@ class QueryAnalysis:
     category: Optional[str]
     queries: List[str]
     keywords: List[str]
+    scope: str
+    model_tokens: List[str]
+    compare_targets: List[str]
 
 
 @dataclass(frozen=True)
@@ -58,6 +121,9 @@ class RetrievalCandidate:
     routes: List[str] = field(default_factory=list)
     rrf_score: float = 0.0
     lexical_score: float = 0.0
+    title_score: float = 0.0
+    metadata_score: float = 0.0
+    model_score: float = 0.0
     final_score: float = 0.0
     confidence: float = 0.0
 
@@ -77,6 +143,8 @@ def tokenize(text: str) -> Set[str]:
             tokens.add(segment)
         else:
             tokens.update(segment[i:i + 2] for i in range(len(segment) - 1))
+    for model_token in extract_model_tokens(text):
+        tokens.add(model_token.lower())
     return {token for token in tokens if token}
 
 
@@ -92,11 +160,123 @@ def infer_category(text: str) -> Optional[str]:
     return best_category
 
 
+def normalize_model_token(token: str) -> str:
+    """把型号、系列名统一为更稳定的检索键。"""
+    cleaned = re.sub(r"[\s\-_/.]+", "", (token or "").upper())
+    for source, target in SERIES_CANONICAL_REPLACEMENTS:
+        cleaned = cleaned.replace(source, target)
+    return cleaned
+
+
+def model_alias_variants(token: str) -> List[str]:
+    """为常见型号生成中英别名，提升型号级召回。"""
+    normalized = normalize_model_token(token)
+    variants = [normalized]
+    for code, family_aliases in SERIES_CODE_VARIANTS.items():
+        if normalized.startswith(code):
+            suffix = normalized[len(code):]
+            if suffix:
+                variants.extend([f"{code}{suffix}"] + [f"{alias} {suffix}" for alias in family_aliases])
+            else:
+                variants.extend([code, *family_aliases])
+    if normalized.startswith("65Z"):
+        variants.extend(["65 Z", "POWER CUSHION 65Z"])
+    return list(dict.fromkeys(normalize_text(item) for item in variants if item))
+
+
+def extract_model_tokens(text: str) -> List[str]:
+    """从用户问题或文档中抽取型号/系列关键 token。"""
+    matches = extract_model_mentions(text)
+    variants: List[str] = []
+    for token in matches:
+        variants.extend(model_alias_variants(token))
+    return list(dict.fromkeys(variants))
+
+
+def extract_model_mentions(text: str) -> List[str]:
+    """抽取问题里真正出现过的型号提及，不展开别名。"""
+    source = normalize_text(text)
+    matches: List[Tuple[int, int, str]] = []
+    for pattern in (ASCII_MODEL_RE, DIGIT_MODEL_RE, CHINESE_MODEL_RE):
+        matches.extend((match.start(), match.end(), match.group(0)) for match in pattern.finditer(source))
+
+    mentions: List[str] = []
+    selected_ranges: List[Tuple[int, int]] = []
+    for start, end, token in sorted(matches, key=lambda item: (item[0], -(item[1] - item[0]))):
+        if any(start < used_end and end > used_start for used_start, used_end in selected_ranges):
+            continue
+        normalized = normalize_model_token(token)
+        if any(char.isdigit() for char in normalized):
+            mentions.append(normalized)
+            selected_ranges.append((start, end))
+    return list(dict.fromkeys(mentions))
+
+
+def infer_brand(text: str) -> Optional[str]:
+    haystack = normalize_text(text).upper()
+    for canonical, aliases in BRAND_ALIASES.items():
+        if any(alias.upper() in haystack for alias in aliases):
+            return canonical
+    return None
+
+
+def infer_series(text: str) -> Optional[str]:
+    haystack = normalize_text(text).upper()
+    for code, aliases in SERIES_CODE_VARIANTS.items():
+        if code in haystack or any(alias.upper() in haystack for alias in aliases):
+            return code
+    return None
+
+
+def infer_doc_type(text: str) -> str:
+    normalized = normalize_text(text)
+    if any(keyword in normalized for keyword in ("对比", "区别", "比较", "哪个好")):
+        return "compare"
+    if any(keyword in normalized for keyword in ("参数", "规格", "平衡点", "线径", "中杆")):
+        return "params"
+    if any(keyword in normalized for keyword in ("入门", "选购", "推荐", "适合")):
+        return "guide"
+    return "knowledge"
+
+
+def extract_compare_targets(question: str) -> List[str]:
+    """抽取对比问题中的两个对象。"""
+    model_mentions = extract_model_mentions(question)
+    if len(model_mentions) >= 2:
+        return model_mentions[:2]
+
+    normalized = normalize_text(question)
+    if not any(keyword in normalized for keyword in ("对比", "比较", "区别", "哪个好", "差别", "还是")):
+        return []
+
+    split = COMPARE_SPLIT_RE.split(normalized)
+    if len(split) < 2:
+        return []
+
+    targets: List[str] = []
+    for segment in split[:2]:
+        mentions = extract_model_mentions(segment)
+        if mentions:
+            targets.append(mentions[0])
+            continue
+        cleaned = re.sub(r"(请|帮我|想问|我想|对比|比较|区别|哪个好|差别|怎么样|适合谁|适合我)$", "", segment).strip()
+        cleaned = re.sub(r"^(请|帮我|想问|我想|对比|比较)", "", cleaned).strip()
+        if cleaned:
+            targets.append(cleaned)
+    return list(dict.fromkeys(targets))[:2]
+
+
 def _expand_query(query: str) -> str:
     additions = []
     for group in SYNONYM_GROUPS:
         if any(term in query for term in group):
+            if group[0] == "羽毛球" and any(ex in query for ex in _SHUTTLE_EXCLUDE):
+                continue
             additions.extend(term for term in group if term not in query)
+
+    for model_token in extract_model_tokens(query):
+        additions.extend(variant for variant in model_alias_variants(model_token) if variant not in query)
+
     if not additions:
         return query
     return normalize_text(f"{query} {' '.join(dict.fromkeys(additions))}")
@@ -109,6 +289,32 @@ def _last_user_message(history: Optional[Sequence]) -> str:
         if role == "user" and content:
             return normalize_text(content)
     return ""
+
+
+def classify_question_scope(text: str) -> str:
+    """把问题分成：问候/闲聊、装备问题、羽球周边问题、无关话题。"""
+    normalized = normalize_text(text)
+    lower = normalized.lower()
+    if is_greeting_or_chitchat(normalized):
+        return "greeting"
+
+    has_badminton_general = any(keyword in normalized for keyword in BADMINTON_GENERAL_KEYWORDS)
+    has_badminton_context = any(keyword in normalized for keyword in BADMINTON_CONTEXT_WORDS)
+    if has_badminton_general or ("羽毛球" in normalized and "装备" not in normalized) or (has_badminton_context and "怎么" in normalized):
+        return "badminton_general"
+
+    has_equipment_signal = (
+        infer_category(normalized) is not None
+        or classify_guide_intent(normalized) is not None
+        or bool(extract_model_tokens(normalized))
+        or any(keyword in normalized for keywords in CATEGORY_KEYWORDS.values() for keyword in keywords)
+    )
+    if has_equipment_signal:
+        return "equipment"
+
+    if any(keyword in lower for keyword in ("weather", "python", "股票", "天气", "吃什么", "旅游", "新闻")):
+        return "offtopic"
+    return "offtopic"
 
 
 def analyze_query(question: str, history: Optional[Sequence] = None) -> QueryAnalysis:
@@ -135,11 +341,41 @@ def analyze_query(question: str, history: Optional[Sequence] = None) -> QueryAna
         category=category,
         queries=queries[:2],
         keywords=keywords,
+        scope=classify_question_scope(contextual_query),
+        model_tokens=extract_model_tokens(contextual_query),
+        compare_targets=extract_compare_targets(contextual_query),
     )
 
 
+def _split_model_sections(text: str) -> List[KnowledgeSection]:
+    lines = (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    sections: List[KnowledgeSection] = []
+    current_title = ""
+    current_lines: List[str] = []
+
+    for line in lines:
+        model_match = MODEL_HEADING_RE.match(line)
+        if model_match and len(line.strip()) <= 48:
+            if current_title:
+                content = "\n".join(current_lines).strip()
+                if content:
+                    sections.append(KnowledgeSection(current_title, content))
+            current_title = model_match.group(1).strip()
+            current_lines = [line.strip()]
+            continue
+
+        if current_title:
+            current_lines.append(line)
+
+    if current_title:
+        content = "\n".join(current_lines).strip()
+        if content:
+            sections.append(KnowledgeSection(current_title, content))
+    return sections if len(sections) >= 2 else []
+
+
 def split_knowledge_sections(text: str) -> List[KnowledgeSection]:
-    """优先按编号问答切分；无法识别时由调用方使用通用递归切分。"""
+    """优先按编号 FAQ 或型号/系列小节切分；否则交给外层递归切分。"""
     lines = (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
     sections: List[KnowledgeSection] = []
     current_title = ""
@@ -162,7 +398,9 @@ def split_knowledge_sections(text: str) -> List[KnowledgeSection]:
         if content:
             sections.append(KnowledgeSection(current_title, content))
 
-    return sections if len(sections) >= 2 else []
+    if len(sections) >= 2:
+        return sections
+    return _split_model_sections(text)
 
 
 def candidate_key(candidate: RetrievalCandidate) -> str:
@@ -205,6 +443,35 @@ def _token_coverage(query_tokens: Set[str], text: str) -> float:
     return len(query_tokens & document_tokens) / len(query_tokens)
 
 
+def _metadata_text(metadata: Dict) -> str:
+    aliases = metadata.get("model_aliases") or metadata.get("model_tokens") or []
+    if not isinstance(aliases, list):
+        aliases = [str(aliases)]
+    parts = [
+        str(metadata.get("section_title", "")),
+        str(metadata.get("file_name", "")),
+        str(metadata.get("brand", "")),
+        str(metadata.get("series", "")),
+        " ".join(str(item) for item in aliases if item),
+        str(metadata.get("doc_type", "")),
+    ]
+    return normalize_text(" ".join(part for part in parts if part))
+
+
+def _model_match_score(model_tokens: Sequence[str], metadata: Dict, content: str) -> float:
+    if not model_tokens:
+        return 0.0
+    metadata_tokens = metadata.get("model_tokens") or metadata.get("model_aliases") or []
+    metadata_set = {normalize_model_token(token) for token in metadata_tokens}
+    content_set = {normalize_model_token(token) for token in extract_model_tokens(content)}
+    query_set = {normalize_model_token(token) for token in model_tokens}
+    if query_set & metadata_set:
+        return 1.0
+    if query_set & content_set:
+        return 0.8
+    return 0.0
+
+
 def rerank_candidates(
     analysis: QueryAnalysis,
     candidates: Sequence[RetrievalCandidate],
@@ -216,34 +483,86 @@ def rerank_candidates(
         return []
 
     max_rrf = max(candidate.rrf_score for candidate in candidates) or 1.0
-    query_tokens = tokenize(analysis.normalized_query)
+    query_tokens = tokenize(analysis.expanded_query)
+    query_len = len(analysis.normalized_query)
     for candidate in candidates:
         candidate.lexical_score = _token_coverage(query_tokens, candidate.content)
-        title_score = _token_coverage(
+        candidate.title_score = _token_coverage(
             query_tokens,
             str(candidate.metadata.get("section_title", "")),
         )
-        rrf_score = candidate.rrf_score / max_rrf
+        candidate.metadata_score = _token_coverage(query_tokens, _metadata_text(candidate.metadata))
+        candidate.model_score = _model_match_score(analysis.model_tokens, candidate.metadata, candidate.content)
+        rrf_norm = candidate.rrf_score / max_rrf
+        dense_norm = max(0.0, min(1.0, candidate.score))
+        candidate.final_score = (
+            0.40 * rrf_norm
+            + 0.15 * dense_norm
+            + 0.15 * candidate.lexical_score
+            + 0.10 * candidate.title_score
+            + 0.10 * candidate.metadata_score
+            + 0.10 * candidate.model_score
+        )
         candidate.confidence = max(
             candidate.lexical_score,
-            0.65 * candidate.score + 0.35 * candidate.lexical_score,
-        )
-        candidate.final_score = (
-            0.35 * rrf_score
-            + 0.35 * candidate.score
-            + 0.25 * candidate.lexical_score
-            + 0.05 * title_score
+            candidate.title_score,
+            candidate.metadata_score,
+            candidate.model_score,
+            0.65 * dense_norm + 0.35 * max(candidate.lexical_score, candidate.metadata_score),
         )
 
     ranked = sorted(candidates, key=lambda item: item.final_score, reverse=True)
-    return [item for item in ranked if item.confidence >= threshold][:top_k]
+    effective_threshold = threshold * (0.7 if query_len <= 6 else 1.0)
+    filtered = [item for item in ranked if item.confidence >= effective_threshold]
+    if filtered:
+        return filtered[:top_k]
+
+    if analysis.model_tokens or analysis.compare_targets:
+        return []
+
+    if any(max(item.lexical_score, item.title_score, item.metadata_score, item.model_score) > 0 for item in ranked):
+        return ranked[:top_k]
+    return []
 
 
 # ============================================================================
-# 导购意图识别 + 约束抽取（P0 新增，纯逻辑，不依赖数据库）
+# 闲聊 / 问候拦截
 # ============================================================================
 
-# 导购意图关键词
+_GREETING_WORDS = frozenset({
+    "你好", "您好", "hi", "hello", "嗨", "嘿", "哈喽", "哈罗",
+    "在吗", "在不在", "有人在", "打招呼",
+    "谢谢", "感谢", "多谢", "thx", "thanks",
+    "再见", "拜拜", "bye", "晚安", "早安", "午安",
+    "好的", "ok", "okay", "嗯", "哦", "噢",
+    "哈哈", "呵呵", "嘿嘿", "haha", "233",
+})
+
+_CHITCHAT_MARKERS = frozenset({
+    "你是谁", "你叫什么", "你是ai", "你是机器人", "介绍一下你自己",
+    "你会什么", "你能做什么", "帮我干", "陪我聊",
+    "无聊", "干嘛", "真的么", "是吗", "对不对", "是不是",
+    "我想聊", "聊天", "闲聊",
+})
+
+
+def is_greeting_or_chitchat(text: str) -> bool:
+    """判断是否为闲聊/问候消息，若是则应跳过 RAG 与推荐引擎。"""
+    t = normalize_text(text).lower()
+    clean = re.sub(r"[，。！？、；：\"'（）【】\s]+", "", t)
+    if clean in _GREETING_WORDS or t.strip() in _GREETING_WORDS:
+        return True
+    if len(clean) <= 4 and any(g in clean for g in _GREETING_WORDS):
+        return True
+    if any(marker in t for marker in _CHITCHAT_MARKERS):
+        return True
+    return False
+
+
+# ============================================================================
+# 导购意图识别 + 约束抽取
+# ============================================================================
+
 GUIDE_INTENT_KEYWORDS = {
     "single_recommend": ("推荐", "买什么", "选什么", "适合我", "推荐一下", "有什么好", "怎么选", "选个", "配吗"),
     "bundle_recommend": ("一套", "配齐", "组合", "怎么配", "搭配", "全配", "整套", "怎么买"),
@@ -253,10 +572,8 @@ GUIDE_INTENT_KEYWORDS = {
     "avoid": ("避坑", "不要买", "不建议", "新手不要", "别买", "坑", "雷"),
 }
 
-# category_id → 中文名
 CATEGORY_NAME_BY_ID = {1: "球拍", 2: "球线", 3: "羽毛球", 4: "球鞋"}
 
-# 品类别名 → category_id
 CATEGORY_ALIASES = {
     1: ("球拍", "羽毛球拍", "拍子", "拍", "racket"),
     2: ("球线", "线", "拍线", "穿线", "string"),
@@ -264,7 +581,6 @@ CATEGORY_ALIASES = {
     4: ("球鞋", "鞋", "羽毛球鞋", "鞋子", "shoes"),
 }
 
-# 用户水平关键词
 LEVEL_KEYWORDS = {
     "beginner": ("新手", "入门", "初学", "刚学", "菜鸟", "小白", "不会打"),
     "intermediate": ("进阶", "中级", "有点基础", "打了一段时间", "业余"),
@@ -272,7 +588,6 @@ LEVEL_KEYWORDS = {
     "competitive": ("比赛", "专业", "职业", "赛事", "国家队", "运动员"),
 }
 
-# 打法关键词
 STYLE_KEYWORDS = {
     "attack": ("进攻", "杀球", "后场", "重杀", "下压"),
     "defense": ("防守", "双打", "平抽", "网前", "防守反击"),
@@ -280,14 +595,12 @@ STYLE_KEYWORDS = {
     "balanced": ("均衡", "全面", "平衡", "攻守"),
 }
 
-# 单双打
 PLAY_TYPE_KEYWORDS = {
     "singles": ("单打",),
     "doubles": ("双打",),
     "mixed": ("混双", "混合"),
 }
 
-# 身体情况
 PHYSICAL_KEYWORDS = {
     "knee_sensitive": ("膝盖", "膝关节"),
     "ankle_sensitive": ("脚踝", "踝关节"),
@@ -295,7 +608,6 @@ PHYSICAL_KEYWORDS = {
     "shoulder_sensitive": ("肩膀", "肩关节"),
 }
 
-# 导购意图集合（命中即触发结构化商品检索）
 GUIDE_INTENTS = frozenset(GUIDE_INTENT_KEYWORDS.keys())
 
 
@@ -323,30 +635,26 @@ def classify_guide_intent(text: str) -> Optional[str]:
     return best if best_score > 0 else None
 
 
-def _extract_budget(text: str):
+def _extract_budget(text: str) -> Tuple[Optional[float], Optional[float], Optional[str]]:
     """返回 (budget_min, budget_max, raw)。"""
     budget_min = budget_max = None
     raw = None
-    # 区间：500-800 / 500~800 / 500到800
     match = re.search(r"(\d+)\s*[-~到至]\s*(\d+)", text)
     if match:
         a, b = int(match.group(1)), int(match.group(2))
         budget_min, budget_max = min(a, b), max(a, b)
         raw = f"{budget_min}-{budget_max}"
         return budget_min, budget_max, raw
-    # 上限：500以内 / 不超过800 / 800以下
     match = re.search(r"(\d+)\s*(?:元|块)?\s*(?:以内|以下|之内|不超过|不超|封顶)", text)
     if match:
         budget_max = int(match.group(1))
         raw = f"<={budget_max}"
         return budget_min, budget_max, raw
-    # 下限：800以上 / 1000起
     match = re.search(r"(\d+)\s*(?:元|块)?\s*(?:以上|起|往上)", text)
     if match:
         budget_min = int(match.group(1))
         raw = f">={budget_min}"
         return budget_min, budget_max, raw
-    # 单一数字：预算500 / 500元 / 价位500
     match = re.search(r"(?:预算|价位|价格)\s*[:：]?\s*(\d+)|(\d+)\s*元", text)
     if match:
         value = int(match.group(1) or match.group(2))
@@ -390,4 +698,3 @@ def extract_constraints(text: str, history: Optional[Sequence] = None) -> GuideC
 
     constraints.budget_min, constraints.budget_max, constraints.raw_budget = _extract_budget(merged)
     return constraints
-

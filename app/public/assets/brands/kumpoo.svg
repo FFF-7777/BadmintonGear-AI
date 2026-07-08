@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" role="img" aria-label="Kumpoo logo">
+  <rect x="22" y="32" width="276" height="96" rx="8" fill="#dc001c"/>
+  <path d="M55 100V58h24v16l31-16h36l-43 22 47 20h-39L79 86v14H55z" fill="#fff"/>
+  <path d="M124 79l21-21h26l-23 23 27 19h-31l-20-15v15h-24V58h24v21z" fill="#fff"/>
+  <text x="174" y="93" fill="#fff" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="23" font-weight="900">Kumpoo</text>
+</svg>

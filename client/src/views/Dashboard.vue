@@ -1,51 +1,79 @@
 <template>
   <div class="page-container">
-    <!-- 统计卡片 -->
-    <el-row :gutter="20" style="margin-bottom:20px">
-      <el-col :span="8">
-        <el-card shadow="hover"><div class="stat-card"><div class="stat-value">{{ stats.user_count || 0 }}</div><div class="stat-label">用户总数</div></div></el-card>
+    <el-row :gutter="20" style="margin-bottom: 20px">
+      <el-col :xs="24" :sm="12" :lg="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-value">{{ stats.product_count || 0 }}</div>
+            <div class="stat-label">装备条目</div>
+          </div>
+        </el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover"><div class="stat-card"><div class="stat-value">{{ stats.order_count || 0 }}</div><div class="stat-label">订单总数</div></div></el-card>
+      <el-col :xs="24" :sm="12" :lg="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-value">{{ stats.category_count || 0 }}</div>
+            <div class="stat-label">启用品类</div>
+          </div>
+        </el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover"><div class="stat-card"><div class="stat-value">¥{{ (stats.total_sales || 0).toFixed(2) }}</div><div class="stat-label">总销售额</div></div></el-card>
+      <el-col :xs="24" :sm="12" :lg="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-value">{{ stats.vectorized_knowledge_count || 0 }}/{{ stats.knowledge_count || 0 }}</div>
+            <div class="stat-label">知识库向量化</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :lg="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-value">{{ stats.chat_session_count || 0 }}</div>
+            <div class="stat-label">AI 会话</div>
+          </div>
+        </el-card>
       </el-col>
     </el-row>
 
-    <!-- 图表区域 -->
     <el-row :gutter="20">
-      <el-col :span="12">
+      <el-col :xs="24" :lg="12">
         <el-card shadow="hover">
-          <template #header>近7日订单趋势</template>
-          <div ref="orderChartRef" class="chart-box"></div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card shadow="hover">
-          <template #header>近7日销售额趋势</template>
-          <div ref="salesChartRef" class="chart-box"></div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="20" style="margin-top:20px">
-      <el-col :span="8">
-        <el-card shadow="hover">
-          <template #header>装备分类占比</template>
+          <template #header>品类装备分布</template>
           <div ref="categoryChartRef" class="chart-box"></div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :lg="12">
         <el-card shadow="hover">
-          <template #header>订单状态分布</template>
-          <div ref="statusChartRef" class="chart-box"></div>
+          <template #header>知识库状态</template>
+          <div ref="knowledgeChartRef" class="chart-box"></div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+    </el-row>
+
+    <el-row :gutter="20" style="margin-top: 20px">
+      <el-col :xs="24" :lg="12">
         <el-card shadow="hover">
-          <template #header>热销装备Top5</template>
-          <div ref="hotChartRef" class="chart-box"></div>
+          <template #header>最新装备参考价</template>
+          <div ref="productChartRef" class="chart-box"></div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :lg="12">
+        <el-card shadow="hover">
+          <template #header>AI 使用概览</template>
+          <div class="metric-grid">
+            <div>
+              <strong>{{ stats.user_count || 0 }}</strong>
+              <span>注册用户</span>
+            </div>
+            <div>
+              <strong>{{ stats.active_product_count || 0 }}</strong>
+              <span>启用装备</span>
+            </div>
+            <div>
+              <strong>{{ stats.chat_message_count || 0 }}</strong>
+              <span>问答消息</span>
+            </div>
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -53,83 +81,95 @@
 </template>
 
 <script setup>
-/**
- * 数据看板页面 - ECharts统计图表
- */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import * as echarts from 'echarts'
 import { getDashboardStats } from '@/api/dashboard'
 
 const stats = ref({})
-const orderChartRef = ref(null)
-const salesChartRef = ref(null)
 const categoryChartRef = ref(null)
-const statusChartRef = ref(null)
-const hotChartRef = ref(null)
+const knowledgeChartRef = ref(null)
+const productChartRef = ref(null)
 let charts = []
 
-/** 初始化图表 */
+function disposeCharts() {
+  charts.forEach((chart) => chart.dispose())
+  charts = []
+}
+
 function initCharts(data) {
-  // 近7日订单趋势
-  const orderChart = echarts.init(orderChartRef.value)
-  orderChart.setOption({
-    tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: data.trend_dates },
-    yAxis: { type: 'value', minInterval: 1 },
-    series: [{ name: '订单数', type: 'line', data: data.trend_orders, smooth: true, areaStyle: { opacity: 0.3 } }],
-  })
-  charts.push(orderChart)
+  disposeCharts()
 
-  // 近7日销售额
-  const salesChart = echarts.init(salesChartRef.value)
-  salesChart.setOption({
-    tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: data.trend_dates },
-    yAxis: { type: 'value' },
-    series: [{ name: '销售额', type: 'bar', data: data.trend_sales, itemStyle: { color: '#67c23a' } }],
-  })
-  charts.push(salesChart)
-
-  // 分类占比
   const categoryChart = echarts.init(categoryChartRef.value)
   categoryChart.setOption({
     tooltip: { trigger: 'item' },
-    series: [{ type: 'pie', radius: ['40%', '70%'], data: data.category_stats, label: { formatter: '{b}: {c}' } }],
+    series: [{ type: 'pie', radius: ['42%', '72%'], data: data.category_stats || [] }],
   })
   charts.push(categoryChart)
 
-  // 订单状态
-  const statusChart = echarts.init(statusChartRef.value)
-  statusChart.setOption({
+  const knowledgeChart = echarts.init(knowledgeChartRef.value)
+  knowledgeChart.setOption({
     tooltip: { trigger: 'item' },
-    series: [{ type: 'pie', radius: '60%', data: data.status_stats }],
+    series: [{ type: 'pie', radius: '68%', data: data.knowledge_status_stats || [] }],
   })
-  charts.push(statusChart)
+  charts.push(knowledgeChart)
 
-  // 热销装备
-  const hotChart = echarts.init(hotChartRef.value)
-  hotChart.setOption({
+  const latestProducts = data.latest_products || []
+  const productChart = echarts.init(productChartRef.value)
+  productChart.setOption({
     tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: data.hot_products.map(p => p.name), axisLabel: { rotate: 30, fontSize: 10 } },
+    xAxis: { type: 'category', data: latestProducts.map((item) => item.name), axisLabel: { rotate: 25, fontSize: 10 } },
     yAxis: { type: 'value' },
-    series: [{ name: '销量', type: 'bar', data: data.hot_products.map(p => p.sales), itemStyle: { color: '#e6a23c' } }],
+    series: [{ name: '参考价', type: 'bar', data: latestProducts.map((item) => item.price), itemStyle: { color: '#22d3ee' } }],
   })
-  charts.push(hotChart)
+  charts.push(productChart)
 }
 
-/** 加载统计数据 */
 async function loadStats() {
   const res = await getDashboardStats()
   stats.value = res.data
+  await nextTick()
   initCharts(res.data)
+}
+
+function resizeCharts() {
+  charts.forEach((chart) => chart.resize())
 }
 
 onMounted(() => {
   loadStats()
-  window.addEventListener('resize', () => charts.forEach(c => c.resize()))
+  window.addEventListener('resize', resizeCharts)
 })
 
 onUnmounted(() => {
-  charts.forEach(c => c.dispose())
+  window.removeEventListener('resize', resizeCharts)
+  disposeCharts()
 })
 </script>
+
+<style scoped>
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metric-grid div {
+  min-height: 130px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.metric-grid strong {
+  color: #0f172a;
+  font-size: 30px;
+}
+
+.metric-grid span {
+  color: #64748b;
+  font-weight: 700;
+}
+</style>

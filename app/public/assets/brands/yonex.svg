@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" role="img" aria-label="YONEX logo">
+  <rect x="22" y="32" width="276" height="96" rx="8" fill="#004098"/>
+  <rect x="22" y="90" width="276" height="38" rx="8" fill="#008e4f"/>
+  <path d="M52 64h26l18 39H70L52 64z" fill="#fff"/>
+  <path d="M89 64h26l-19 39H70l19-39z" fill="#fff"/>
+  <circle cx="60" cy="102" r="14" fill="#fff"/>
+  <circle cx="98" cy="102" r="14" fill="#fff"/>
+  <text x="128" y="93" fill="#fff" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="33" font-weight="900">YONEX</text>
+</svg>

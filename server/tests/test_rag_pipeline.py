@@ -3,6 +3,7 @@ import unittest
 from services.rag_pipeline import (
     RetrievalCandidate,
     analyze_query,
+    classify_question_scope,
     reciprocal_rank_fusion,
     rerank_candidates,
     split_knowledge_sections,
@@ -12,46 +13,69 @@ from services.rag_pipeline import (
 class QueryAnalysisTests(unittest.TestCase):
     def test_short_follow_up_uses_previous_user_message(self):
         analysis = analyze_query(
-            "运费谁承担？",
+            "中杆硬度呢？",
             history=[
-                {"role": "user", "content": "装备质量有问题，我想退货"},
-                {"role": "assistant", "content": "请提供装备照片。"},
+                {"role": "user", "content": "预算 800 想选一支速度快的球拍"},
+                {"role": "assistant", "content": "可以优先看 4U 均衡或头轻拍。"},
             ],
         )
 
-        self.assertEqual(analysis.category, "after_sale")
-        self.assertIn("装备质量有问题", analysis.queries[-1])
-        self.assertIn("运费谁承担", analysis.queries[-1])
+        self.assertEqual(analysis.category, "racket")
+        self.assertIn("预算 800", analysis.queries[-1])
+        self.assertIn("中杆", analysis.queries[-1])
 
-    def test_logistics_query_is_classified(self):
-        analysis = analyze_query("快递显示签收了，但我没有收到")
+    def test_model_query_extracts_alias_tokens(self):
+        analysis = analyze_query("YY 天斧77 Pro 和 JS-12 有什么区别？")
 
-        self.assertEqual(analysis.category, "logistics")
-        self.assertIn("物流", analysis.expanded_query)
+        self.assertIn("AX77PRO", analysis.model_tokens)
+        self.assertIn("JS12", analysis.model_tokens)
+        self.assertEqual(analysis.compare_targets[:2], ["AX77PRO", "JS12"])
+
+    def test_single_model_query_does_not_become_compare(self):
+        analysis = analyze_query("65z3适合宽脚吗")
+
+        self.assertIn("65Z3", analysis.model_tokens)
+        self.assertEqual(analysis.compare_targets, [])
+
+    def test_badminton_general_scope(self):
+        self.assertEqual(classify_question_scope("打球前怎么热身比较好？"), "badminton_general")
+        self.assertEqual(classify_question_scope("今天天气怎么样"), "offtopic")
 
 
 class KnowledgeSplitTests(unittest.TestCase):
     def test_numbered_faq_is_split_by_question(self):
-        text = """常见物流问题
-1. 关于发货延迟
-订单会在付款后尽快发出。
-2. 关于物流不更新
-运输途中可能没有及时扫描。
-3. 关于显示签收但未收到
-请先检查快递柜和门卫。"""
+        text = """球拍常见参数
+1. 关于平衡点
+平衡点越靠近拍头，通常越偏进攻。
+2. 关于中杆硬度
+新手一般不要优先选择过硬中杆。
+3. 关于重量规格
+4U 通常更容易挥动，适合大多数业余用户。"""
 
         sections = split_knowledge_sections(text)
 
         self.assertEqual(len(sections), 3)
-        self.assertEqual(sections[0].title, "关于发货延迟")
-        self.assertNotIn("物流不更新", sections[0].content)
+        self.assertEqual(sections[0].title, "关于平衡点")
+        self.assertNotIn("中杆硬度", sections[0].content)
+
+    def test_model_sections_can_be_split(self):
+        text = """AX77 Pro
+偏进攻但不算极端，后场下压更轻松。
+
+JS-12
+适合双打平抽挡和防守反击。"""
+
+        sections = split_knowledge_sections(text)
+
+        self.assertEqual(len(sections), 2)
+        self.assertEqual(sections[0].title, "AX77 Pro")
 
 
 class RetrievalRankingTests(unittest.TestCase):
     def test_rrf_deduplicates_same_chunk_from_multiple_routes(self):
         dense = RetrievalCandidate(
-            content="质量问题退货运费由商家承担",
-            metadata={"chunk_id": "chunk-1", "section_title": "退货运费"},
+            content="4U 均衡球拍更容易上手，适合新手和双打防守。",
+            metadata={"chunk_id": "chunk-1", "section_title": "球拍重量"},
             route="dense",
             score=0.82,
         )
@@ -69,18 +93,18 @@ class RetrievalRankingTests(unittest.TestCase):
         self.assertGreater(fused[0].rrf_score, 1 / 61)
 
     def test_reranker_prefers_relevant_content(self):
-        analysis = analyze_query("退货运费谁承担")
+        analysis = analyze_query("新手双打球拍怎么选？")
         candidates = reciprocal_rank_fusion(
             [[
                 RetrievalCandidate(
-                    content="质量问题退货时，退货运费由商家承担。",
-                    metadata={"chunk_id": "relevant", "section_title": "退货运费"},
+                    content="新手双打建议优先看 4U、均衡或头轻、甜区更友好的球拍。",
+                    metadata={"chunk_id": "relevant", "section_title": "新手球拍"},
                     route="dense",
                     score=0.78,
                 ),
                 RetrievalCandidate(
-                    content="账号注销后积分和优惠券会被清除。",
-                    metadata={"chunk_id": "irrelevant", "section_title": "注销账户"},
+                    content="羽毛球速度通常按 76、77 等速度号区分。",
+                    metadata={"chunk_id": "irrelevant", "section_title": "羽毛球速度"},
                     route="dense",
                     score=0.72,
                 ),
@@ -93,12 +117,12 @@ class RetrievalRankingTests(unittest.TestCase):
         self.assertGreater(ranked[0].final_score, ranked[1].final_score)
 
     def test_reranker_rejects_low_confidence_candidate(self):
-        analysis = analyze_query("怎么申请开发票")
+        analysis = analyze_query("宽脚球鞋怎么选？")
         candidates = reciprocal_rank_fusion(
             [[
                 RetrievalCandidate(
-                    content="快递运输途中可能没有及时扫描。",
-                    metadata={"chunk_id": "logistics"},
+                    content="球线线径越细，弹性通常更好，但耐打会下降。",
+                    metadata={"chunk_id": "string"},
                     route="keyword",
                     score=0.02,
                 )
@@ -106,6 +130,23 @@ class RetrievalRankingTests(unittest.TestCase):
         )
 
         ranked = rerank_candidates(analysis, candidates, top_k=4, threshold=0.2)
+
+        self.assertEqual(ranked, [])
+
+    def test_reranker_does_not_force_fallback_on_model_query(self):
+        analysis = analyze_query("AX77PRO 怎么样？")
+        candidates = reciprocal_rank_fusion(
+            [[
+                RetrievalCandidate(
+                    content="这是一段完全无关的羽毛球价格说明。",
+                    metadata={"chunk_id": "noise"},
+                    route="dense",
+                    score=0.21,
+                )
+            ]],
+        )
+
+        ranked = rerank_candidates(analysis, candidates, top_k=2, threshold=0.15)
 
         self.assertEqual(ranked, [])
 

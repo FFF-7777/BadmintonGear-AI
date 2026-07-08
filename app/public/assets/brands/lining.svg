@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" role="img" aria-label="LI-NING logo">
+  <rect x="22" y="32" width="276" height="96" rx="8" fill="#e7362d"/>
+  <path d="M75 74c40-32 82-42 140-31-38 4-73 16-109 39 42-15 82-16 135-2-64 12-118 11-166-6z" fill="#fff"/>
+  <path d="M70 96c43 9 92 7 151-4-49 18-104 21-166 9l15-5z" fill="#fff" opacity=".92"/>
+  <text x="102" y="113" fill="#fff" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="25" font-style="italic" font-weight="900">LI-NING</text>
+</svg>

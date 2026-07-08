@@ -1,0 +1,36 @@
+<!-- 确认订单页面 — iOS Young Style -->
+<view class="container">
+  <!-- 地址选择卡 -->
+  <view class="address-card" bindtap="selectAddress">
+    <view class="address-main">
+      <view wx:if="{{selectedAddress}}" class="addr-info">
+        <view class="addr-row">
+          <text class="name">{{selectedAddress.name}}</text>
+          <text class="phone">{{selectedAddress.phone}}</text>
+          <text wx:if="{{selectedAddress.is_default === 1}}" class="default-tag">默认</text>
+        </view>
+        <text class="addr-text">{{selectedAddress.address}}</text>
+      </view>
+      <view wx:else class="no-address">
+        <text class="no-address-text">请选择收货地址</text>
+        <text class="no-address-tip">点击选择或新增收货地址</text>
+      </view>
+    </view>
+    <text class="arrow">&gt;</text>
+  </view>
+
+  <!-- 备注表单卡 -->
+  <view class="form-card-ios">
+    <view class="form-item-ios">
+      <text class="label-ios">备注</text>
+      <input placeholder="选填" placeholder-class="placeholder-ios" value="{{remark}}" bindinput="onRemark" />
+    </view>
+  </view>
+
+  <!-- 底部提交栏（毛玻璃） -->
+  <view class="submit-bar glass-bar">
+    <button class="btn-submit" bindtap="submitOrder" loading="{{loading}}">提交订单(模拟支付)</button>
+  </view>
+</view>
+
+<ai-float-btn />

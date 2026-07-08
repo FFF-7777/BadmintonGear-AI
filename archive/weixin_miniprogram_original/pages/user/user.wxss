@@ -1,0 +1,129 @@
+/* ============================================
+   我的页面 — iOS Young Style
+   渐变紫头图卡 + 分组菜单列表 + 退出登录
+   ============================================ */
+.container { padding-top: 16rpx; }
+
+/* ====== 渐变头图卡片 ====== */
+.profile-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #7C73F0 0%, #5856D6 50%, #4848C4 100%);
+  border-radius: var(--radius-xl);
+  padding: 44rpx 32rpx 40rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 16rpx 44rpx rgba(88, 86, 214, 0.22);
+}
+
+/* 装饰背景圆 */
+.header-bg {
+  position: absolute;
+  right: -50rpx;
+  top: -80rpx;
+  width: 280rpx;
+  height: 280rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+}
+
+/* 头像 */
+.avatar, .avatar-placeholder {
+  position: relative;
+  z-index: 1;
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 4rpx solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.12);
+}
+.avatar-placeholder {
+  background: linear-gradient(145deg, rgba(255,255,255,.25), rgba(255,255,255,.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 用户信息 */
+.user-detail { position: relative; z-index: 1; margin-left: 26rpx; min-width: 0; }
+.nickname {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+.username {
+  display: block;
+  font-size: 24rpx;
+  opacity: 0.8;
+  color: #fff;
+  margin-top: 6rpx;
+}
+.signature {
+  display: block;
+  font-size: 23rpx;
+  opacity: 0.72;
+  color: #fff;
+  margin-top: 14rpx;
+}
+
+/* ====== iOS 分组菜单列表 ====== */
+.menu-group {
+  overflow: hidden;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 108rpx;
+  padding: 0 28rpx;
+  border-bottom: 1rpx solid #F2F2F7;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease;
+}
+.menu-item:last-child { border-bottom: none; }
+.menu-item:active { background-color: #FAFAFC; }
+
+.menu-left { display: flex; align-items: center; }
+
+/* 图标圆底 */
+.menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 16rpx;
+  margin-right: 18rpx;
+  font-size: 26rpx;
+  line-height: 1;
+}
+.menu-icon.purple { background: #EDEAFF; }
+.menu-icon.blue { background: #E8F0FF; }
+.menu-icon.orange { background: #FFF5EB; }
+.menu-icon.green { background: #E8FFF3; }
+
+.menu-label { font-size: 29rpx; color: #1C1C1E; font-weight: 500; }
+.menu-arrow { color: #C7C7CC; font-size: 32rpx; }
+
+/* ====== 退出登录 ====== */
+.logout-section {
+  display: flex;
+  justify-content: center;
+  padding: 36rpx 0 10rpx;
+}
+.logout-text {
+  font-size: 29rpx;
+  color: var(--price);
+  font-weight: 500;
+}
+.logout-text:active { opacity: 0.6; }

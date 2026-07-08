@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-label="VICTOR JS-12">
+  <rect width="640" height="420" rx="42" fill="#fff5f7"/>
+  <circle cx="445" cy="132" r="92" fill="#ffe4e6"/>
+  <ellipse cx="386" cy="148" rx="74" ry="101" fill="none" stroke="#c8102e" stroke-width="18"/>
+  <path d="M357 225L224 348" stroke="#111827" stroke-width="21" stroke-linecap="round"/>
+  <path d="M218 353l-52 45" stroke="#fb7185" stroke-width="30" stroke-linecap="round"/>
+  <path d="M337 97h99M326 132h124M324 166h128M337 199h101M378 51v192M416 54v181" stroke="#fecdd3" stroke-width="5"/>
+  <text x="48" y="76" fill="#c8102e" font-family="Arial" font-size="34" font-weight="900">VICTOR</text>
+  <text x="48" y="114" fill="#0f172a" font-family="Arial" font-size="28" font-weight="900">JETSPEED JS-12</text>
+</svg>

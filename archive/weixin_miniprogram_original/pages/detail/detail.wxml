@@ -1,0 +1,29 @@
+<!-- 装备详情页 — iOS Young Style -->
+<view class="detail-page" wx:if="{{product}}">
+  <!-- 大图 -->
+  <view class="img-wrap">
+    <image class="detail-img" src="{{product.image}}" mode="aspectFill" />
+  </view>
+
+  <!-- 信息卡 -->
+  <view class="info-card">
+    <view class="price-row">
+      <text class="detail-price">¥{{product.price}}</text>
+    </view>
+    <text class="detail-name">{{product.name}}</text>
+    <text class="detail-desc">{{product.description}}</text>
+    <view class="stock-row">
+      <text class="stock-text">库存: {{product.stock}}</text>
+      <text class="divider-dot">·</text>
+      <text class="stock-text">销量: {{product.sales}}</text>
+    </view>
+  </view>
+
+  <!-- 底部操作栏（毛玻璃） -->
+  <view class="action-bar glass-bar">
+    <button class="btn-cart" bindtap="addCart">加入购物车</button>
+    <button class="btn-buy" bindtap="buyNow">立即购买</button>
+  </view>
+</view>
+
+<ai-float-btn />

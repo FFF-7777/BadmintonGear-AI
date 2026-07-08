@@ -26,3 +26,19 @@ export function uploadImage(file, type = 'product') {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
+
+export function importProducts(file, categoryId) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const suffix = categoryId ? `?category_id=${categoryId}` : ''
+  return request.post(`/product/admin/import${suffix}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export function downloadImportTemplate(categoryId) {
+  return request.get('/product/admin/import-template', {
+    params: { category_id: categoryId },
+    responseType: 'blob',
+  })
+}

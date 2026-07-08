@@ -2,7 +2,18 @@
 文件解析服务
 支持txt、doc、pdf、markdown四种格式的知识库文件解析
 """
+import re
 from pathlib import Path
+
+
+# PDF/DOCX 等二进制文档解析后常残留孤立的 UTF-16 代理码点（lone surrogate，
+# 如 \udc89），它们无法被 UTF-8 编码，会在后续 json.dumps / .encode("utf-8") 时
+# 触发 UnicodeEncodeError。在解析出口统一替换为 U+FFFD，从源头切断。
+_SURROGATE_RE = re.compile(r"[\ud800-\udfff]")
+
+
+def _sanitize(text: str) -> str:
+    return _SURROGATE_RE.sub("\ufffd", text) if text else text
 
 
 def parse_txt(file_path: str) -> str:
@@ -81,7 +92,8 @@ def parse_file(file_path: str, file_type: str) -> str:
     if not parser:
         raise ValueError(f"不支持的文件类型: {file_type}")
 
-    return parser(file_path)
+    raw = parser(file_path)
+    return _sanitize(raw)
 
 
 def get_file_type(filename: str) -> str:
