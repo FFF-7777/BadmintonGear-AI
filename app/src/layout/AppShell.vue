@@ -5,7 +5,7 @@
       <TopBar />
       <div class="content" :class="{ 'content--chat': route.name === 'Chat' }">
         <router-view v-slot="{ Component }">
-          <keep-alive :include="['Home', 'Brands', 'Chat']">
+          <keep-alive :include="['Home', 'Brands']">
             <component :is="Component" />
           </keep-alive>
         </router-view>

@@ -1,4 +1,5 @@
 """Local database bootstrap for development."""
+import os
 from decimal import Decimal
 
 from sqlalchemy import inspect, text
@@ -12,7 +13,7 @@ from models.knowledge import KnowledgeFile
 from models.product import Product
 from models.user import User
 from services.rag_pipeline import infer_brand, infer_series
-from utils.security import md5_hash
+from utils.security import hash_password, is_legacy_password
 
 
 PRODUCT_EXTRA_COLUMNS = {
@@ -71,13 +72,17 @@ def init_database() -> None:
 
     db = SessionLocal()
     try:
-        if not db.query(Admin).filter(Admin.username == "admin").first():
+        existing_admin = db.query(Admin).filter(Admin.username == "admin").first()
+        if not existing_admin:
             db.add(Admin(
                 username="admin",
-                password=md5_hash("admin"),
+                password=hash_password(os.getenv("ADMIN_INIT_PASSWORD", "admin")),
                 nickname="羽智选管理员",
                 status=1,
             ))
+        elif is_legacy_password(existing_admin.password):
+            # 自动迁移旧 MD5 密码为 bcrypt（仅开发环境，用环境变量密码重置）
+            existing_admin.password = hash_password(os.getenv("ADMIN_INIT_PASSWORD", "admin"))
 
         if db.query(Category).count() == 0:
             db.add_all([

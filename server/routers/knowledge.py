@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
-from config import KNOWLEDGE_DIR
+from config import KNOWLEDGE_DIR, MAX_FILE_SIZE
 from database import get_db
 from models.knowledge import KnowledgeFile
 from schemas.schemas import KnowledgeFileOut
@@ -26,7 +26,6 @@ router = APIRouter(prefix="/api/knowledge", tags=["知识库管理"])
 
 # 允许上传的文件类型
 ALLOWED_TYPES = {"txt", "docx", "pdf", "md", "markdown"}
-MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
 @router.get("/admin/list")

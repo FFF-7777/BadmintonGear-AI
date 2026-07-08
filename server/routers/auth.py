@@ -1,24 +1,27 @@
 """
 认证路由
-提供用户/管理员登录和注册接口
+提供用户/管理员登录和注册接口，带 rate limiting 防暴力破解。
 """
 import re
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from config import RATE_LIMIT_LOGIN, RATE_LIMIT_REGISTER
 from database import get_db
 from models.admin import Admin
 from models.user import User
 from schemas.schemas import LoginRequest, RegisterRequest
+from utils.rate_limit import limiter
 from utils.resp import success, error
-from utils.security import verify_password, md5_hash, create_access_token
+from utils.security import verify_password, hash_password, create_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])
 
 
 @router.post("/admin/login")
-def admin_login(req: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMIT_LOGIN)
+def admin_login(request: Request, req: LoginRequest, db: Session = Depends(get_db)):
     """
     管理员登录
     :param req: 登录请求(用户名+密码)
@@ -43,7 +46,8 @@ def admin_login(req: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/user/login")
-def user_login(req: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMIT_LOGIN)
+def user_login(request: Request, req: LoginRequest, db: Session = Depends(get_db)):
     """
     用户登录(小程序/前台)
     :param req: 登录请求
@@ -69,7 +73,8 @@ def user_login(req: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/user/register")
-def user_register(req: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMIT_REGISTER)
+def user_register(request: Request, req: RegisterRequest, db: Session = Depends(get_db)):
     """
     用户注册
     :param req: 注册请求
@@ -93,7 +98,7 @@ def user_register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     user = User(
         username=req.username,
-        password=md5_hash(req.password),
+        password=hash_password(req.password),
         phone=req.phone,
         nickname=req.nickname or req.username,
     )

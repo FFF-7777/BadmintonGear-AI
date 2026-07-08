@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { buildSpecList } from '@/utils/specs'
 
 const http = axios.create({ baseURL: '/api', timeout: 15000 })
 
@@ -79,48 +80,6 @@ function mapProduct(p) {
   }
 }
 
-function buildSpecList(specs) {
-  const entries = [
-    specs.weight_class && `${specs.weight_class} 重量`,
-    specs.balance && balanceLabel(specs.balance),
-    specs.shaft_flex && shaftLabel(specs.shaft_flex),
-    specs.gauge && `线径 ${specs.gauge}`,
-    specs.speed && `${specs.speed} 速`,
-    specs.cushion_score && `缓震 ${specs.cushion_score}`,
-    specs.support_score && `支撑 ${specs.support_score}`,
-    specs.width_fit && widthLabel(specs.width_fit),
-  ].filter(Boolean)
-  return entries.slice(0, 4)
-}
-
-function balanceLabel(value) {
-  const map = {
-    'head-heavy': '头重进攻',
-    'head-light': '头轻速度',
-    'even-balanced': '均衡控制',
-  }
-  return map[value] || String(value)
-}
-
-function shaftLabel(value) {
-  const map = {
-    flexible: '中软杆',
-    medium: '中杆适中',
-    stiff: '中硬杆',
-    'extra-stiff': '高硬杆',
-  }
-  return map[value] || String(value)
-}
-
-function widthLabel(value) {
-  const map = {
-    wide: '宽脚友好',
-    'wide-friendly': '宽脚友好',
-    regular: '标准鞋楦',
-  }
-  return map[value] || String(value)
-}
-
 /**
  * 通过 WebSocket 连接后端流式 AI 聊天
  * @param {string} message 用户消息
@@ -136,9 +95,9 @@ export function chatStream(message, sessionId, handlers = {}) {
     return null
   }
 
-  // 通过 vite 代理转发到后端 8000 的 WebSocket
+  // token 不再走 query 参数（会进访问日志），改由首条消息传递
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${proto}//${location.host}/api/chat/ws?token=${encodeURIComponent(token)}`
+  const wsUrl = `${proto}//${location.host}/api/chat/ws`
 
   let ws
   try {
@@ -149,6 +108,8 @@ export function chatStream(message, sessionId, handlers = {}) {
   }
 
   let settled = false
+  let authenticated = false
+
   const done = (fn) => {
     if (settled) return
     settled = true
@@ -156,7 +117,8 @@ export function chatStream(message, sessionId, handlers = {}) {
   }
 
   ws.onopen = () => {
-    ws.send(JSON.stringify({ message, session_id: sessionId || '' }))
+    // 首条消息发送认证
+    ws.send(JSON.stringify({ type: 'auth', token }))
   }
 
   ws.onmessage = (ev) => {
@@ -166,6 +128,19 @@ export function chatStream(message, sessionId, handlers = {}) {
     } catch {
       return
     }
+
+    // 认证阶段
+    if (!authenticated) {
+      if (data.type === 'auth_ok') {
+        authenticated = true
+        ws.send(JSON.stringify({ message, session_id: sessionId || '' }))
+      } else if (data.type === 'error') {
+        done(() => handlers.onError?.(new Error(data.message || '认证失败')))
+      }
+      return
+    }
+
+    // 业务消息
     switch (data.type) {
       case 'session_id':
         handlers.onSession?.(data.session_id)

@@ -10,7 +10,7 @@ from models.admin import Admin
 from schemas.schemas import AdminOut, AdminProfileUpdate, AdminPasswordUpdate
 from utils.deps import get_current_admin
 from utils.resp import success, error
-from utils.security import verify_password, md5_hash
+from utils.security import verify_password, hash_password
 
 router = APIRouter(prefix="/api/admin/profile", tags=["管理员资料"])
 
@@ -54,6 +54,6 @@ def change_password(
     if req.old_password == req.new_password:
         return error("新密码不能与原密码相同", 400)
 
-    admin.password = md5_hash(req.new_password)
+    admin.password = hash_password(req.new_password)
     db.commit()
     return success(None, "密码修改成功")

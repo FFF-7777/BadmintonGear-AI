@@ -26,6 +26,7 @@ app/dist/
 app/output/
 app/.playwright-cli/
 app/vite.config.js.timestamp-*.mjs
+app/vitest.config.js.timestamp-*.mjs
 
 # 根目录工具产物（playwright 截图等）
 .playwright-cli/
@@ -41,13 +42,9 @@ app/vite.config.js.timestamp-*.mjs
 .workbuddy/
 .agents/
 
-# 旧微信小程序个人配置
-archive/weixin_miniprogram_original/project.private.config.json
 
-# 数据库导出 dump；保留建库种子脚本
+# 数据库导出 dump（不要提交任何 SQL dump）
 *.sql
-!db_ai_shop.sql
-!server/sql/db_ai_shop.sql
 
 # 个人知识库测试资料
 知识库测试文件/

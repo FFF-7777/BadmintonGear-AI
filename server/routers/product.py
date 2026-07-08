@@ -23,6 +23,32 @@ def _product_to_dict(product: Product, db: Session) -> dict:
     return data
 
 
+def _batch_attach_category_names(products: list, db: Session) -> list:
+    """批量预取分类名，避免列表接口 N+1 查询。"""
+    if not products:
+        return products
+    category_ids = {p.category_id for p in products}
+    categories = (
+        db.query(Category)
+        .filter(Category.id.in_(category_ids))
+        .all()
+    )
+    cat_map = {c.id: c.name for c in categories}
+    for p in products:
+        p._category_name_cache = cat_map.get(p.category_id, "")
+    return products
+
+
+def _product_to_dict_batch(product: Product, db: Session) -> dict:
+    """使用预取的分类名缓存，避免逐条查询。"""
+    data = ProductOut.model_validate(product).model_dump()
+    data["category_name"] = getattr(product, "_category_name_cache", None) or ""
+    if not data["category_name"]:
+        cat = db.query(Category).filter(Category.id == product.category_id).first()
+        data["category_name"] = cat.name if cat else ""
+    return data
+
+
 @router.get("/list")
 def product_list(
     page: int = Query(1, ge=1),
@@ -40,7 +66,8 @@ def product_list(
         query = query.filter(Product.name.like(f"%{keyword}%"))
     total = query.count()
     items = query.order_by(Product.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
-    return success(page_result([_product_to_dict(i, db) for i in items], total, page, page_size))
+    _batch_attach_category_names(items, db)
+    return success(page_result([_product_to_dict_batch(i, db) for i in items], total, page, page_size))
 
 
 @router.get("/detail/{product_id}")
@@ -72,7 +99,8 @@ def admin_product_list(
         query = query.filter(Product.status == status)
     total = query.count()
     items = query.order_by(Product.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
-    return success(page_result([_product_to_dict(i, db) for i in items], total, page, page_size))
+    _batch_attach_category_names(items, db)
+    return success(page_result([_product_to_dict_batch(i, db) for i in items], total, page, page_size))
 
 
 @router.post("/admin/create")

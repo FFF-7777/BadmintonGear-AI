@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { brands, categories } from '@/data/knowledge'
+import { buildSpecList } from '@/utils/specs'
 
 const http = axios.create({
   baseURL: '/api',
@@ -67,21 +68,6 @@ export function normalizeProduct(product) {
   }
 }
 
-function buildSpecList(specs) {
-  return [
-    specs.weight_class && `${specs.weight_class} 重量`,
-    specs.balance && balanceLabel(specs.balance),
-    specs.shaft_flex && shaftLabel(specs.shaft_flex),
-    specs.gauge && `线径 ${specs.gauge}`,
-    specs.speed && `${specs.speed} 速`,
-    specs.cushion_score && `缓震 ${specs.cushion_score}`,
-    specs.support_score && `支撑 ${specs.support_score}`,
-    specs.width_fit && widthLabel(specs.width_fit),
-    specs.usage_scene && String(specs.usage_scene),
-    specs.highlight && String(specs.highlight),
-  ].filter(Boolean)
-}
-
 function detectBrand(product, specs) {
   const pool = [product.name, product.description, product.brand, product.series, specs.brand, specs.Brand, specs.品牌]
     .filter(Boolean)
@@ -105,32 +91,4 @@ function formatPrice(value) {
   const n = Number(value)
   if (!Number.isFinite(n)) return '¥0'
   return `¥${n.toFixed(n % 1 === 0 ? 0 : 2)}`
-}
-
-function balanceLabel(value) {
-  const map = {
-    'head-heavy': '头重进攻',
-    'head-light': '头轻速度',
-    'even-balanced': '均衡控制',
-  }
-  return map[value] || String(value)
-}
-
-function shaftLabel(value) {
-  const map = {
-    flexible: '中软杆',
-    medium: '中杆适中',
-    stiff: '中硬杆',
-    'extra-stiff': '高硬杆',
-  }
-  return map[value] || String(value)
-}
-
-function widthLabel(value) {
-  const map = {
-    wide: '宽脚友好',
-    'wide-friendly': '宽脚友好',
-    regular: '标准鞋楦',
-  }
-  return map[value] || String(value)
 }

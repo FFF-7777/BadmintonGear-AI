@@ -6,6 +6,7 @@ import json
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
+from config import MAX_MESSAGE_LENGTH
 from database import get_db, SessionLocal
 from models.user import User
 from schemas.schemas import ChatRequest, ChatMessageOut
@@ -47,28 +48,35 @@ async def chat_websocket(websocket: WebSocket):
     WebSocket 流式聊天接口
 
     协议：
-    1. 客户端连接时通过 query 参数传递 token: ?token=xxx
-    2. 客户端发送 JSON: {"message": "...", "session_id": "..."}
-    3. 服务端逐 token 推送 JSON（每行一个完整 JSON 对象）：
+    1. 客户端连接后，首条消息发送认证: {"type": "auth", "token": "xxx"}
+       （token 不再走 query 参数，避免进入访问日志造成泄露）
+    2. 服务端验证通过后推送: {"type": "auth_ok"}
+    3. 客户端发送业务消息: {"message": "...", "session_id": "..."}
+    4. 服务端逐 token 推送 JSON（每行一个完整 JSON 对象）：
        - {"type": "session_id", "session_id": "..."}
        - {"type": "sources", "sources": [...]}    （检索来源）
        - {"type": "content", "content": "..."}   （可能多条）
        - {"type": "done", "answer": "完整回复"}
        - {"type": "error", "message": "错误信息"}
-    4. 消息推送完毕后连接保持，可继续发送下一条消息
+    5. 消息推送完毕后连接保持，可继续发送下一条消息
     """
     await websocket.accept()
 
-    # 通过 query 参数认证用户
-    token = None
+    # 阶段1：等待首条认证消息
     try:
-        token = websocket.query_params.get("token", "")
-        if not token:
-            await websocket.send_text(json.dumps({"type": "error", "message": "缺少认证token"}, ensure_ascii=False))
-            await websocket.close()
-            return
+        raw = await websocket.receive_text()
+        auth_data = json.loads(raw)
     except Exception:
-        pass
+        await websocket.send_text(json.dumps({"type": "error", "message": "首条消息须为认证JSON"}, ensure_ascii=False))
+        await websocket.close()
+        return
+
+    if auth_data.get("type") != "auth" or not auth_data.get("token"):
+        await websocket.send_text(json.dumps({"type": "error", "message": "缺少认证消息"}, ensure_ascii=False))
+        await websocket.close()
+        return
+
+    token = auth_data["token"]
 
     # 验证 token 获取用户
     current_user = None
@@ -83,6 +91,7 @@ async def chat_websocket(websocket: WebSocket):
             await websocket.send_text(json.dumps({"type": "error", "message": "认证失败或用户不存在"}, ensure_ascii=False))
             await websocket.close()
             return
+        await websocket.send_text(json.dumps({"type": "auth_ok"}, ensure_ascii=False))
     except Exception as e:
         await websocket.send_text(json.dumps({"type": "error", "message": f"认证异常: {str(e)}"}, ensure_ascii=False))
         await websocket.close()
@@ -102,7 +111,7 @@ async def chat_websocket(websocket: WebSocket):
             if not message:
                 await websocket.send_text(json.dumps({"type": "error", "message": "消息不能为空"}, ensure_ascii=False))
                 continue
-            if len(message) > 1000:
+            if len(message) > MAX_MESSAGE_LENGTH:
                 await websocket.send_text(json.dumps({"type": "error", "message": "消息不能超过1000字"}, ensure_ascii=False))
                 continue
 
