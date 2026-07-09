@@ -31,21 +31,23 @@
             <button @click="retryLast">重试上一条</button>
           </div>
 
-          <section v-if="showSuggestions" class="welcome-panel">
-            <div class="welcome-copy">
-              <AiMark :size="46" soft />
-              <div>
-                <h2>先给我预算、打法、水平</h2>
-                <p>问具体型号我会先按型号查；资料不全就直接说缺什么，不会乱编参数。</p>
+          <Transition name="fade">
+            <section v-if="showSuggestions" class="welcome-panel">
+              <div class="welcome-copy">
+                <AiMark :size="46" soft />
+                <div>
+                  <h2>先给我预算、打法、水平</h2>
+                  <p>问具体型号我会先按型号查；资料不全就直接说缺什么，不会乱编参数。</p>
+                </div>
               </div>
-            </div>
 
-            <div class="suggest-grid">
-              <button v-for="q in suggestions" :key="q" class="suggest-chip" @click="askNow(q)">
-                {{ q }}
-              </button>
-            </div>
-          </section>
+              <div class="suggest-grid">
+                <button v-for="q in suggestions" :key="q" class="suggest-chip" @click="askNow(q)">
+                  {{ q }}
+                </button>
+              </div>
+            </section>
+          </Transition>
 
           <div
             v-for="m in messages"
@@ -107,7 +109,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getBrand } from '@/data/knowledge'
 import { ensureToken, chatStream, getChatHistory, saveChatHistory, clearChatHistory } from '@/api/chat'
@@ -131,9 +133,12 @@ const atBottom = ref(true)
 const wsRef = ref(null)
 const streamState = reactive({
   aiId: null,
-  buffer: '',
-  timer: null,
+  pending: '',
 })
+
+// 用 requestAnimationFrame 把流式渲染与滚动节流到每帧一次，避免逐 token 重渲染抖动
+let rafFlushId = null
+let rafScrollId = null
 
 const suggestions = [
   'YY 天斧 77 Pro 和 JS-12 有什么区别？',
@@ -148,12 +153,12 @@ const showSuggestions = computed(() => messages.value.length === 0 && !loading.v
 
 function resetChat() {
   closeSocket()
-  if (streamState.timer) {
-    clearTimeout(streamState.timer)
-    streamState.timer = null
+  if (rafFlushId) {
+    cancelAnimationFrame(rafFlushId)
+    rafFlushId = null
   }
   streamState.aiId = null
-  streamState.buffer = ''
+  streamState.pending = ''
   messages.value = []
   sessionId.value = ''
   ctxBrandId.value = ''
@@ -165,7 +170,7 @@ function resetChat() {
 function restoreChat() {
   const data = getChatHistory()
   streamState.aiId = null
-  streamState.buffer = ''
+  streamState.pending = ''
   if (data && Array.isArray(data.messages)) {
     // 恢复时把残留的 streaming 标记复位，避免卡片卡在"正在生成"
     messages.value = data.messages.map((m) => ({ ...m, streaming: false }))
@@ -208,34 +213,37 @@ function handleScroll() {
 }
 
 function scrollToBottom(force = false) {
-  nextTick(() => {
-    const el = scrollEl.value
-    if (!el) return
-    if (force || atBottom.value) {
-      el.scrollTop = el.scrollHeight
-    }
+  const el = scrollEl.value
+  if (!el) return
+  if (!force && !atBottom.value) return
+  if (rafScrollId) cancelAnimationFrame(rafScrollId)
+  rafScrollId = requestAnimationFrame(() => {
+    const node = scrollEl.value
+    if (node) node.scrollTop = node.scrollHeight
   })
 }
 
-function flushStream(force = false) {
-  if (!streamState.aiId) return
-  if (!streamState.buffer && !force) return
+// 把缓冲的增量在下一帧一次性合并进消息，避免逐 token 触发重渲染导致上下跳动
+function flushRaf() {
+  rafFlushId = null
   const msg = messages.value.find((item) => item.id === streamState.aiId)
-  if (!msg) return
-  if (streamState.buffer) {
-    msg.content += streamState.buffer
-    streamState.buffer = ''
-  }
-  if (streamState.timer) {
-    clearTimeout(streamState.timer)
-    streamState.timer = null
+  if (msg && streamState.pending) {
+    msg.content += streamState.pending
+    streamState.pending = ''
   }
   scrollToBottom()
 }
 
-function scheduleFlush() {
-  if (streamState.timer) return
-  streamState.timer = setTimeout(() => flushStream(), 48)
+function scheduleRafFlush() {
+  if (rafFlushId) return
+  rafFlushId = requestAnimationFrame(flushRaf)
+}
+
+// 持久化做防抖，避免流式每帧都写 localStorage 造成主线程卡顿
+let persistTimer = null
+function schedulePersist(delay = 700) {
+  if (persistTimer) clearTimeout(persistTimer)
+  persistTimer = setTimeout(() => persistChat(), delay)
 }
 
 function appendUserMessage(text) {
@@ -309,12 +317,16 @@ async function askNow(preset) {
       sessionId.value = sid || sessionId.value
     },
     onContent: (delta) => {
-      streamState.buffer += delta || ''
-      scheduleFlush()
+      streamState.pending += delta || ''
+      scheduleRafFlush()
     },
     onDone: (payload) => {
-      flushStream(true)
-      const msg = messages.value.find((item) => item.id === aiId)
+      if (rafFlushId) {
+        cancelAnimationFrame(rafFlushId)
+        rafFlushId = null
+      }
+      flushRaf()
+      const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
         msg.streaming = false
         if (!msg.content && payload.answer) {
@@ -324,10 +336,16 @@ async function askNow(preset) {
         msg.products = payload.recommended_products || []
       }
       loading.value = false
+      scrollToBottom(true)
+      schedulePersist(0)
     },
     onError: (err) => {
-      flushStream(true)
-      const msg = messages.value.find((item) => item.id === aiId)
+      if (rafFlushId) {
+        cancelAnimationFrame(rafFlushId)
+        rafFlushId = null
+      }
+      flushRaf()
+      const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
         msg.streaming = false
         if (!msg.content) {
@@ -363,7 +381,7 @@ watch(
 // 任意对话变化（含流式增量、session、上下文品牌）都持久化，确保返回页面/刷新可恢复
 watch(
   () => [messages.value, sessionId.value, ctxBrandId.value],
-  () => persistChat(),
+  () => schedulePersist(),
   { deep: true }
 )
 
@@ -379,9 +397,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   closeSocket()
-  if (streamState.timer) {
-    clearTimeout(streamState.timer)
-  }
+  if (rafFlushId) cancelAnimationFrame(rafFlushId)
 })
 </script>
 
@@ -527,6 +543,17 @@ onBeforeUnmount(() => {
   margin: 0 auto;
   display: grid;
   gap: 12px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.26s ease, transform 0.26s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .status-card {
