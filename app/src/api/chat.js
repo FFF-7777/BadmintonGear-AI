@@ -21,39 +21,117 @@ function setStored(key, val) {
   }
 }
 
-// 自动匿名登录：首次访问时注册一个 guest 用户并登录，token 存 localStorage
-// 这样聊天前端无需独立的登录页即可使用后端真实 AI 能力
-export async function ensureToken() {
-  const existing = getStored(TOKEN_KEY)
-  if (existing) return existing
+// 清除无效 token（供 chatStream 认证失败时调用）
+function clearInvalidToken() {
+  setStored(TOKEN_KEY, '')
+}
 
-  let username = getStored(USER_KEY)
-  if (!username) {
-    username = 'guest_' + Math.random().toString(36).slice(2, 10)
-    setStored(USER_KEY, username)
-  }
+// 生成符合后端约束的随机用户名（≤20字符）
+function makeGuestName() {
+  return 'g' + Math.random().toString(36).slice(2, 17) // 1+15=16，远低于 20 上限
+}
+
+// 自动匿名登录：确保拿到一个有效的 JWT token
+// 策略：验证缓存 token → 先尝试登录（用户可能已存在）→ 登录失败才注册 → 多用户名兜底
+export async function ensureToken() {
   const password = 'guest123'
 
-  try {
-    await http.post('/auth/user/register', {
-      username,
-      password,
-      type: 'user',
-      nickname: '访客',
-    })
-  } catch (e) {
-    // 用户名已存在属于正常情况，忽略
-    const code = e?.response?.data?.code
-    if (code !== 400) {
-      // 其他错误也尝试继续登录
+  // ── Step 1: 验证已有缓存 token ──
+  const existing = getStored(TOKEN_KEY)
+  if (existing) {
+    try {
+      await http.get('/user/profile/me', { headers: { Authorization: `Bearer ${existing}` } })
+      console.log('[ensureToken] ✅ 缓存 token 有效，直接复用')
+      return existing
+    } catch (e) {
+      console.warn('[ensureToken] ⚠️ 缓存 token 失效 (HTTP', e?.response?.status, ')，清除')
+      clearInvalidToken()
     }
   }
 
-  const loginRes = await http.post('/auth/user/login', { username, password })
-  const token = loginRes?.data?.data?.token
-  if (!token) throw new Error('登录失败：未返回 token')
-  setStored(TOKEN_KEY, token)
-  return token
+  // ── Step 2: 拿到候选用户名（优先用 localStorage 里之前成功注册过的）──
+  let username = getStored(USER_KEY)
+  if (!username || username.length > 20 || !/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+    username = makeGuestName()
+    setStored(USER_KEY, username)
+  }
+
+  // ── Step 3: 先尝试直接登录（用户可能已在之前的会话中注册过）──
+  try {
+    const loginRes = await http.post('/auth/user/login', { username, password })
+    const token = loginRes?.data?.data?.token
+    if (token) {
+      console.log('[ensureToken] ✅ 直接登录成功（已存在用户）')
+      setStored(TOKEN_KEY, token)
+      return token
+    }
+  } catch (e) {
+    console.log('[ensureToken] 直接登录失败:', e?.response?.status, e?.response?.data?.msg || e.message)
+  }
+
+  // ── Step 4: 登录失败 → 注册新用户 ──
+  let registered = false
+  try {
+    const regRes = await http.post('/auth/user/register', {
+      username, password, type: 'user', nickname: '访客',
+    })
+    console.log('[ensureToken] ✅ 注册成功', regRes?.data)
+    registered = true
+  } catch (e) {
+    const status = e?.response?.status
+    const msg = e?.response?.data?.msg || e.message
+    console.warn('[ensureToken] ⚠️ 注册异常 HTTP', status, msg)
+
+    // 422=参数问题(用户名格式/太长等) → 换名重试
+    if (status === 422) {
+      username = makeGuestName()
+      setStored(USER_KEY, username)
+      try {
+        await http.post('/auth/user/register', { username, password, type: 'user', nickname: '访客' })
+        console.log('[ensureToken] ✅ 换名重试注册成功')
+        registered = true
+      } catch (e2) {
+        console.warn('[ensureToken] ⚠️ 换名重试也失败:', e2?.response?.data?.msg || e2.message)
+      }
+    }
+    // 400=用户名已存在（但登录却失败了？可能是密码不一致，忽略）
+    // 429=限流 → 稍后重试或换策略
+  }
+
+  // ── Step 5: 注册后（或注册被跳过）再次登录 ──
+  try {
+    const loginRes = await http.post('/auth/user/login', { username, password })
+    const token = loginRes?.data?.data?.token
+    if (token) {
+      console.log('[ensureToken] ✅ 登录成功, token_len=', token.length)
+      setStored(TOKEN_KEY, token)
+      return token
+    }
+    throw new Error('登录无返回 token: ' + JSON.stringify(loginRes?.data))
+  } catch (e) {
+    const detail = e?.response?.data || e.message || String(e)
+    console.error('[ensureToken] ❌ 登录最终失败:', detail)
+
+    // ── Step 6: 终极兜底 —— 尝试用全新用户名注册+登录（最多 3 次）──
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const freshName = makeGuestName()
+      console.log(`[ensureToken] 🔄 兜底尝试 ${attempt + 1}/3:`, freshName)
+      try {
+        await http.post('/auth/user/register', { username: freshName, password, type: 'user', nickname: '访客' })
+        const lr = await http.post('/auth/user/login', { username: freshName, password })
+        const t = lr?.data?.data?.token
+        if (t) {
+          setStored(USER_KEY, freshName)
+          setStored(TOKEN_KEY, t)
+          console.log('[ensureToken] ✅ 兜底登录成功!')
+          return t
+        }
+      } catch (ignored) {
+        console.log('[ensureToken] 兜底', attempt + 1, '失败:', ignored?.response?.status || ignored.message)
+      }
+    }
+    throw new Error('认证失败: ' + (typeof detail === 'string' ? detail.slice(0, 200) : JSON.stringify(detail)))
+  }
 }
 
 function mapProduct(p) {
@@ -135,6 +213,8 @@ export function chatStream(message, sessionId, handlers = {}) {
         authenticated = true
         ws.send(JSON.stringify({ message, session_id: sessionId || '' }))
       } else if (data.type === 'error') {
+        // 认证失败 → 清除无效 token，下次消息会重新登录
+        clearInvalidToken()
         done(() => handlers.onError?.(new Error(data.message || '认证失败')))
       }
       return

@@ -141,7 +141,7 @@ class VectorStoreService:
             for token in model_tokens:
                 model_aliases.extend(model_alias_variants(token))
             chunk_hash = hashlib.sha256(document.page_content.encode("utf-8")).hexdigest()[:16]
-            document.metadata.update({
+            meta: dict = {
                 "file_id": file_id,
                 "file_name": file_name,
                 "file_type": file_type,
@@ -152,9 +152,15 @@ class VectorStoreService:
                 "brand": infer_brand(context_text) or "",
                 "series": infer_series(context_text) or "",
                 "doc_type": infer_doc_type(context_text),
-                "model_tokens": list(dict.fromkeys(model_tokens)),
-                "model_aliases": list(dict.fromkeys(model_aliases)),
-            })
+            }
+            # Chroma upsert 要求所有 metadata 值必须非空；型号术语类 chunk
+            # 可能不含任何型号名（如规则/术语文档），此时 model_tokens/model_aliases
+            # 为空列表 → 触发 ValueError。仅当非空时才写入。
+            if model_tokens:
+                meta["model_tokens"] = list(dict.fromkeys(model_tokens))
+            if model_aliases:
+                meta["model_aliases"] = list(dict.fromkeys(model_aliases))
+            document.metadata.update(meta)
         return documents
 
     def add_documents(
@@ -185,11 +191,14 @@ class VectorStoreService:
         )
         existing_ids = set(existing.get("ids", []))
         ids = [document.metadata["chunk_id"] for document in documents]
-        # Chroma 的 upsert 成功后再清理旧块，重新向量化失败时仍保留上一版可用索引。
-        self.vectorstore.add_documents(documents, ids=ids)
-        stale_ids = list(existing_ids - set(ids))
-        if stale_ids:
-            self.vectorstore.delete(ids=stale_ids)
+        # Chroma 单次 upsert 有最大批量限制（~5461），超限报 ValueError。
+        # 分批写入：先清旧再逐批 add，失败时已写部分可被下次重写的 upsert 覆盖。
+        self.vectorstore.delete(ids=list(existing_ids))
+        _CHROMA_UPSERT_BATCH = 5000
+        for i in range(0, len(documents), _CHROMA_UPSERT_BATCH):
+            batch_docs = documents[i : i + _CHROMA_UPSERT_BATCH]
+            batch_ids = ids[i : i + _CHROMA_UPSERT_BATCH]
+            self.vectorstore.add_documents(batch_docs, ids=batch_ids)
         return len(documents)
 
     def delete_by_file_id(self, file_id: int) -> None:
@@ -490,7 +499,7 @@ def safe_add_documents(
     file_id: int,
     file_name: str,
     file_type: str,
-    timeout: int = 120,
+    timeout: int = 600,
 ) -> tuple:
     """隔离式入库：返回 (chunk_count, error_msg)。子进程崩溃或异常都返回错误原因。"""
     payload = {

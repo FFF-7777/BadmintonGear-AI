@@ -52,7 +52,7 @@ def _product_to_dict_batch(product: Product, db: Session) -> dict:
 @router.get("/list")
 def product_list(
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
+    page_size: int = Query(10, ge=1, le=2000),
     category_id: int = Query(None),
     keyword: str = Query(None),
     status: int = Query(1),
@@ -82,7 +82,7 @@ def product_detail(product_id: int, db: Session = Depends(get_db)):
 @router.get("/admin/list")
 def admin_product_list(
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
+    page_size: int = Query(10, ge=1, le=2000),
     category_id: int = Query(None),
     keyword: str = Query(None),
     status: int = Query(None),

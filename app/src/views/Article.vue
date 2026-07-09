@@ -55,13 +55,6 @@
         </div>
       </div>
 
-      <article v-if="article.content" class="glass-card art-body">
-        <div class="block-head">
-          <span>Guide</span>
-          <h2>选品说明</h2>
-        </div>
-        <MarkdownView :content="article.content" />
-      </article>
     </section>
 
     <div class="art-tags">
@@ -88,7 +81,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { getBrand, getCategory } from '@/data/knowledge'
 import { fetchProductDetail, fetchProducts } from '@/api/product'
 import KnowledgeCard from '@/components/KnowledgeCard.vue'
-import MarkdownView from '@/components/MarkdownView.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -160,7 +152,7 @@ onMounted(async () => {
 
 .product-media {
   position: relative;
-  min-height: 392px;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.7);
@@ -171,7 +163,7 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .media-shine {
@@ -337,10 +329,6 @@ onMounted(async () => {
   .kb-grid {
     grid-template-columns: 1fr;
   }
-
-  .product-media {
-    min-height: 320px;
-  }
 }
 
 @media (max-width: 760px) {
@@ -358,7 +346,6 @@ onMounted(async () => {
   }
 
   .product-media {
-    min-height: 260px;
     border-radius: 22px;
   }
 }

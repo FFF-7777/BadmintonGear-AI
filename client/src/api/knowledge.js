@@ -17,7 +17,9 @@ export function uploadKnowledge(file) {
 }
 
 export function vectorizeKnowledge(id) {
-  return request.post(`/knowledge/admin/${id}/vectorize`)
+  return request.post(`/knowledge/admin/${id}/vectorize`, {}, {
+    timeout: 600000, // 大文件(3-4MB markdown)向量化需 6-8 分钟，远超默认 30s
+  })
 }
 
 export function deleteKnowledge(id) {

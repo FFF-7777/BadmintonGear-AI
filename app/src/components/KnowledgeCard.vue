@@ -1,5 +1,9 @@
 <template>
-  <article class="kb-card" @click="open">
+  <a
+    class="kb-card"
+    :href="`#/article/${article.id}`"
+    :aria-label="`查看 ${article.title} 详情`"
+  >
     <div class="kb-cover">
       <img v-if="article.image" :src="article.image" :alt="article.title" loading="lazy" />
       <div v-else class="kb-fallback">{{ catIcon }}</div>
@@ -30,38 +34,33 @@
         <span class="kb-arrow">查看详情</span>
       </div>
     </div>
-  </article>
+  </a>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { getBrand, getCategory } from '@/data/knowledge'
 
 const props = defineProps({
   article: { type: Object, required: true },
 })
 
-const router = useRouter()
-
 const cat = computed(() => getCategory(props.article.category))
 const catIcon = computed(() => (cat.value ? cat.value.icon : '🏸'))
 const catName = computed(() => (cat.value ? cat.value.name : '装备'))
 const brand = computed(() => (props.article.brandId ? getBrand(props.article.brandId) : null))
 const brandLabel = computed(() => brand.value?.nameCn || props.article.brand || '')
-
-function open() {
-  router.push(`/article/${props.article.id}`)
-}
 </script>
 
 <style scoped>
 .kb-card {
   height: 100%;
-  display: grid;
-  grid-template-rows: 210px 1fr;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 30px;
   background:
@@ -78,8 +77,14 @@ function open() {
   box-shadow: 0 30px 74px rgba(15, 23, 42, 0.14);
 }
 
+.kb-card:focus-visible {
+  outline: 3px solid rgba(110, 231, 249, 0.9);
+  outline-offset: 2px;
+}
+
 .kb-cover {
   position: relative;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background:
     radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.76), transparent 28%),
@@ -94,7 +99,7 @@ function open() {
 
 .kb-cover img {
   display: block;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .kb-fallback {
@@ -162,6 +167,11 @@ function open() {
   color: #55657a;
   font-size: 14px;
   line-height: 1.74;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: 3.48em;
 }
 
 .spec-list,

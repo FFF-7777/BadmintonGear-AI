@@ -66,8 +66,8 @@ function formatScore(score) {
 <style scoped>
 .reco-card {
   height: 100%;
-  display: grid;
-  grid-template-rows: 164px 1fr;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   cursor: pointer;
   border: 1px solid rgba(226, 232, 240, 0.92);
@@ -85,6 +85,7 @@ function formatScore(score) {
 
 .reco-media {
   position: relative;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background:
     radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.48), transparent 28%),
@@ -95,7 +96,7 @@ function formatScore(score) {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .reco-fallback {
@@ -180,7 +181,12 @@ function formatScore(score) {
 .reco-summary {
   color: #56667b;
   font-size: 14px;
-  line-height: 1.68;
+  line-height: 1.58;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: 3.16em;
 }
 
 .reco-specs,

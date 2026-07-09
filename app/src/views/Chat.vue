@@ -5,7 +5,6 @@
         <div class="chat-header-copy">
           <span class="chat-eyebrow">羽智选 · RAG AI 装备顾问</span>
           <h1>把预算、打法和具体型号直接说出来</h1>
-          <p>优先按真实知识库和结构化装备库回答。型号没收录会明确告诉你，不再用本地演示数据偷偷兜底。</p>
         </div>
 
         <div class="chat-header-side">
@@ -14,7 +13,7 @@
           </div>
 
           <div v-if="ctxBrand" class="header-brand" :style="{ '--bc': ctxBrand.color }">
-            <span>当前优先参考 <b>{{ ctxBrand.nameCn }}</b> 装备库</span>
+            <span>优先参考 <b>{{ ctxBrand.nameCn }}</b></span>
             <button class="header-brand-clear" @click="clearCtx">清除</button>
           </div>
         </div>
@@ -230,6 +229,7 @@ function retryLast() {
 }
 
 async function askNow(preset) {
+  console.log('[Chat v5] askNow 触发 — 如果看到此条说明已加载最新版代码')
   const text = String(preset ?? inputText.value ?? '').trim()
   if (!text || loading.value) return
 
@@ -245,13 +245,15 @@ async function askNow(preset) {
   let token = ''
   try {
     token = await ensureToken()
-  } catch {
+  } catch (err) {
+    const reason = err?.message || String(err)
+    console.error('[Chat] ensureToken 失败:', reason)
     const msg = messages.value.find((item) => item.id === aiId)
     if (msg) {
-      msg.content = '当前无法连接后端 AI 服务，请确认后端已经启动，并且匿名登录接口可用。'
+      msg.content = '认证失败：' + reason
       msg.streaming = false
     }
-    errorText.value = '后端连接失败，前台不会再偷偷降级到本地假知识库。你现在看到的是真实错误态。'
+    errorText.value = '后端连接失败：' + reason
     loading.value = false
     scrollToBottom(true)
     return
@@ -283,7 +285,6 @@ async function askNow(preset) {
         msg.products = payload.recommended_products || []
       }
       loading.value = false
-      scrollToBottom(true)
     },
     onError: (err) => {
       flushStream(true)
@@ -340,7 +341,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .chat-page {
   height: 100%;
-  padding: 14px 20px 16px;
+  padding: 4px 20px 16px;
   background:
     radial-gradient(circle at 14% 0%, rgba(214, 255, 127, 0.14), transparent 24%),
     radial-gradient(circle at 100% 0%, rgba(110, 231, 249, 0.12), transparent 24%),
@@ -357,11 +358,11 @@ onBeforeUnmount(() => {
 .chat-header {
   max-width: 1180px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background:
     radial-gradient(circle at 0% 0%, rgba(214, 255, 127, 0.18), transparent 26%),
@@ -371,66 +372,72 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(24px) saturate(1.1);
 }
 
+.chat-header-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
 .chat-eyebrow {
   display: inline-flex;
-  padding: 4px 9px;
+  padding: 3px 8px;
   color: #d6ff7f;
   border: 1px solid rgba(214, 255, 127, 0.22);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .chat-header h1 {
-  margin: 7px 0 5px;
-  color: #fff;
-  font-size: 22px;
-  line-height: 1.12;
-  font-weight: 950;
-  letter-spacing: -0.03em;
-}
-
-.chat-header p {
-  max-width: 700px;
   margin: 0;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 12px;
-  line-height: 1.55;
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
 .chat-header-side {
-  display: grid;
-  gap: 8px;
-  align-content: start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .header-cap-grid {
-  display: grid;
-  gap: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .header-cap {
-  padding: 7px 10px;
+  padding: 3px 9px;
   color: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
   font-size: 11px;
   font-weight: 850;
+  white-space: nowrap;
 }
 
 .header-brand {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  padding: 7px 10px;
+  padding: 4px 10px;
   color: rgba(255, 255, 255, 0.76);
-  border-left: 4px solid var(--bc, #6ee7f9);
-  border-radius: 12px;
+  border-left: 3px solid var(--bc, #6ee7f9);
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .header-brand b {

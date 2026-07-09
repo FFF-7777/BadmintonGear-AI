@@ -73,6 +73,9 @@ function submit() {
 
 .topbar--chat {
   justify-content: space-between;
+  height: 48px;
+  flex: 0 0 48px;
+  padding: 8px 34px 8px 24px;
 }
 
 .crumb {

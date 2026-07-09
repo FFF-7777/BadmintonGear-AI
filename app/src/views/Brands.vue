@@ -65,17 +65,23 @@
       <button v-if="selBrand || selCat || keyword" @click="reset">重置筛选</button>
     </div>
 
-    <div v-if="results.length" class="kb-grid">
-      <div v-for="(a, i) in results" :key="a.id" class="fade-up" :style="{ animationDelay: i * 40 + 'ms' }">
+    <div v-if="pagedResults.length" class="kb-grid">
+      <div v-for="(a, i) in pagedResults" :key="a.id" class="fade-up" :style="{ animationDelay: i * 40 + 'ms' }">
         <KnowledgeCard :article="a" />
       </div>
     </div>
     <div v-else class="empty-tip card">没有找到匹配装备，换个关键词或筛选条件试试。</div>
+
+    <div v-if="totalPages > 1" class="pager">
+      <button class="pg-btn" :disabled="currentPage === 1" @click="currentPage--">‹ 上一页</button>
+      <span class="pg-info">第 {{ currentPage }} / {{ totalPages }} 页 · 共 {{ results.length }} 条</span>
+      <button class="pg-btn" :disabled="currentPage === totalPages" @click="currentPage++">下一页 ›</button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watchEffect } from 'vue'
+import { computed, onMounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { brands, categories, getBrand } from '@/data/knowledge'
 import { fetchProducts } from '@/api/product'
@@ -105,6 +111,20 @@ const results = computed(() => {
     if (kw && !searchPool(item).includes(kw)) return false
     return true
   })
+})
+
+// 客户端分页：每页 100 条
+const pageSize = 100
+const currentPage = ref(1)
+const totalPages = computed(() => Math.max(1, Math.ceil(results.value.length / pageSize)))
+const pagedResults = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return results.value.slice(start, start + pageSize)
+})
+
+// 筛选条件变化时回到第 1 页
+watch([selBrand, selCat, keyword], () => {
+  currentPage.value = 1
 })
 
 const resultText = computed(() => {
@@ -341,6 +361,44 @@ onMounted(async () => {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 26px 0 8px;
+}
+
+.pg-btn {
+  height: 40px;
+  padding: 0 20px;
+  color: var(--text-primary);
+  font-weight: 850;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease, opacity 0.16s ease;
+}
+
+.pg-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(34, 211, 238, 0.62);
+  box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.11), var(--shadow-md);
+}
+
+.pg-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.pg-info {
+  color: var(--text-secondary);
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .kb-grid {

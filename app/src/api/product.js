@@ -24,7 +24,7 @@ function unwrap(res) {
 }
 
 export async function fetchProducts(params = {}) {
-  const data = unwrap(await http.get('/product/list', { params: { page: 1, page_size: 100, ...params } }))
+  const data = unwrap(await http.get('/product/list', { params: { page: 1, page_size: 2000, ...params } }))
   return {
     list: (data.list || []).map(normalizeProduct),
     total: data.total || 0,

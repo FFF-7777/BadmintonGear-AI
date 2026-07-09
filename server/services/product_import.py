@@ -338,17 +338,16 @@ def _validate_row(row_index: int, category_id: int, row: Dict[str, str], existin
     errors: List[ImportErrorRow] = []
     if not row.get("name"):
         errors.append(ImportErrorRow(row_index, "name", "装备名称不能为空"))
-    if not row.get("price"):
-        errors.append(ImportErrorRow(row_index, "price", "参考价不能为空"))
-    else:
+    # price 为"建议必填项"：仅做格式校验，缺失不阻断（落库默认 0）
+    price_raw = (row.get("price") or "").strip()
+    if price_raw:
         try:
-            Decimal(str(row["price"]))
+            Decimal(price_raw)
         except (InvalidOperation, ValueError):
             errors.append(ImportErrorRow(row_index, "price", "参考价格式不正确"))
 
-    for field in CATEGORY_SPEC_FIELDS[category_id]:
-        if field in ("weight_class", "balance", "shaft_flex", "gauge", "material", "cushion_score", "support_score") and not row.get(field):
-            errors.append(ImportErrorRow(row_index, field, "该字段为该品类建议必填项"))
+    # 品类规格字段为"建议必填项"，缺失不再硬性阻断导入，
+    # 仅让 specs 对应键留空（落库后仍可按型号名/品牌被检索）。
 
     incoming_aliases = {normalize_model_token(alias) for alias in _split_list(row.get("model_aliases", ""))}
     for product in existing_products:

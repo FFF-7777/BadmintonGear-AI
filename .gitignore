@@ -49,5 +49,11 @@ app/vitest.config.js.timestamp-*.mjs
 # 个人知识库测试资料
 知识库测试文件/
 
+# 爬虫源数据（图片 + xlsx，体积大，不入库）
+爬虫/
+
+# 临时调试输出
+server/_tmp_*.txt
+
 # Windows 保留名误创建文件
 nul

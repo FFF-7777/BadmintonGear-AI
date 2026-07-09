@@ -66,7 +66,7 @@ OPENAI_BASE_URL = os.getenv(
     "https://llm-e7ls8vvabw7yp9a4.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
 )
 # 默认值与 .env 保持一致，避免混淆
-CHAT_MODEL = os.getenv("CHAT_MODEL", "qwen3.5-plus")
+CHAT_MODEL = os.getenv("CHAT_MODEL", "glm-5.1")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-v4")
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "2048"))
 
