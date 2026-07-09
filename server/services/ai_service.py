@@ -827,12 +827,10 @@ class AIService:
                     {"type": "session_id", "session_id": session_id},
                     ensure_ascii=False,
                 )
-                # 闲聊不走流式（内容短，无必要），直接返回完整回答
+                # 闲聊也走分块流式，避免前端「一次性蹦出」
                 answer = self._handle_chitchat(message, history)
-                yield json.dumps(
-                    {"type": "content", "content": answer},
-                    ensure_ascii=False,
-                )
+                async for msg in _yield_content_chunks(answer):
+                    yield json.dumps(msg, ensure_ascii=False)
 
                 ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
                 yield json.dumps({
@@ -854,7 +852,8 @@ class AIService:
                     ensure_ascii=False,
                 )
                 answer = self._handle_offtopic(message)
-                yield json.dumps({"type": "content", "content": answer}, ensure_ascii=False)
+                async for msg in _yield_content_chunks(answer):
+                    yield json.dumps(msg, ensure_ascii=False)
                 ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
                 yield json.dumps({
                     "type": "done",

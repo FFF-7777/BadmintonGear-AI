@@ -33,6 +33,9 @@ app/vitest.config.js.timestamp-*.mjs
 .playwright-cli/
 /output/
 
+# 向量库备份副本（不入库，防 HNSW 损坏时秒恢复）
+backups/
+
 # 日志
 *.log
 .runtime-logs/
