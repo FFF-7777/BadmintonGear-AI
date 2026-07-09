@@ -199,7 +199,8 @@ class VectorStoreService:
         ids = [document.metadata["chunk_id"] for document in documents]
         # Chroma 单次 upsert 有最大批量限制（~5461），超限报 ValueError。
         # 分批写入：先清旧再逐批 add，失败时已写部分可被下次重写的 upsert 覆盖。
-        self.vectorstore.delete(ids=list(existing_ids))
+        if existing_ids:
+            self.vectorstore.delete(ids=list(existing_ids))
         _CHROMA_UPSERT_BATCH = 5000
         for i in range(0, len(documents), _CHROMA_UPSERT_BATCH):
             batch_docs = documents[i : i + _CHROMA_UPSERT_BATCH]
