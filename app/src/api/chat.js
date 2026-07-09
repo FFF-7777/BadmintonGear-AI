@@ -26,6 +26,42 @@ function clearInvalidToken() {
   setStored(TOKEN_KEY, '')
 }
 
+// ── 对话历史持久化（按 token 分键）──
+// 目的：SPA 内页面跳转（如去「装备库」再返回）或刷新页面时保留对话；
+// 仅在 token 换新（≈ 下一次登录）时自然开启一份空历史，符合"下次登录才消失"。
+const HISTORY_PREFIX = 'bg_chat_history_'
+
+export function getChatHistory() {
+  const token = getStored(TOKEN_KEY)
+  if (!token) return null
+  try {
+    const raw = localStorage.getItem(HISTORY_PREFIX + token)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+export function saveChatHistory(state) {
+  const token = getStored(TOKEN_KEY)
+  if (!token) return
+  try {
+    localStorage.setItem(HISTORY_PREFIX + token, JSON.stringify(state))
+  } catch {
+    /* 容量超限等忽略 */
+  }
+}
+
+export function clearChatHistory() {
+  const token = getStored(TOKEN_KEY)
+  if (!token) return
+  try {
+    localStorage.removeItem(HISTORY_PREFIX + token)
+  } catch {
+    /* ignore */
+  }
+}
+
 // 生成符合后端约束的随机用户名（≤20字符）
 function makeGuestName() {
   return 'g' + Math.random().toString(36).slice(2, 17) // 1+15=16，远低于 20 上限

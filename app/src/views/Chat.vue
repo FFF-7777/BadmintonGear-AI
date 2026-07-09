@@ -12,6 +12,8 @@
             <span v-for="item in headerCaps" :key="item" class="header-cap">{{ item }}</span>
           </div>
 
+          <button class="header-newchat" :disabled="loading" @click="resetChat">新对话</button>
+
           <div v-if="ctxBrand" class="header-brand" :style="{ '--bc': ctxBrand.color }">
             <span>优先参考 <b>{{ ctxBrand.nameCn }}</b></span>
             <button class="header-brand-clear" @click="clearCtx">清除</button>
@@ -108,7 +110,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getBrand } from '@/data/knowledge'
-import { ensureToken, chatStream } from '@/api/chat'
+import { ensureToken, chatStream, getChatHistory, saveChatHistory, clearChatHistory } from '@/api/chat'
 import AiMark from '@/components/AiMark.vue'
 import MarkdownView from '@/components/MarkdownView.vue'
 import ProductRecoCard from '@/components/ProductRecoCard.vue'
@@ -145,7 +147,44 @@ const ctxBrand = computed(() => (ctxBrandId.value ? getBrand(ctxBrandId.value) :
 const showSuggestions = computed(() => messages.value.length === 0 && !loading.value)
 
 function resetChat() {
+  closeSocket()
+  if (streamState.timer) {
+    clearTimeout(streamState.timer)
+    streamState.timer = null
+  }
+  streamState.aiId = null
+  streamState.buffer = ''
   messages.value = []
+  sessionId.value = ''
+  ctxBrandId.value = ''
+  // 手动清空时也清掉持久化历史
+  clearChatHistory()
+}
+
+// 从 localStorage 恢复当前登录(token)下的对话；token 不变则跨跳转/刷新都在。
+function restoreChat() {
+  const data = getChatHistory()
+  streamState.aiId = null
+  streamState.buffer = ''
+  if (data && Array.isArray(data.messages)) {
+    // 恢复时把残留的 streaming 标记复位，避免卡片卡在"正在生成"
+    messages.value = data.messages.map((m) => ({ ...m, streaming: false }))
+    sessionId.value = data.sessionId || ''
+    ctxBrandId.value = data.ctxBrandId || ''
+  } else {
+    messages.value = []
+    sessionId.value = ''
+    ctxBrandId.value = ''
+  }
+}
+
+// 持久化当前对话（token 维度），供返回页面/刷新后恢复
+function persistChat() {
+  saveChatHistory({
+    messages: messages.value,
+    sessionId: sessionId.value,
+    ctxBrandId: ctxBrandId.value,
+  })
 }
 
 function clearCtx() {
@@ -321,8 +360,16 @@ watch(
   }
 )
 
+// 任意对话变化（含流式增量、session、上下文品牌）都持久化，确保返回页面/刷新可恢复
+watch(
+  () => [messages.value, sessionId.value, ctxBrandId.value],
+  () => persistChat(),
+  { deep: true }
+)
+
 onMounted(() => {
-  resetChat()
+  // 关键修复：恢复历史而非清空，避免从「装备库」等页面返回时对话丢失
+  restoreChat()
   const q = route.query.q
   if (q) {
     inputText.value = String(q)
@@ -445,6 +492,7 @@ onBeforeUnmount(() => {
 }
 
 .header-brand-clear,
+.header-newchat,
 .status-card button {
   height: 28px;
   padding: 0 10px;
@@ -455,6 +503,17 @@ onBeforeUnmount(() => {
   cursor: pointer;
   font-size: 12px;
   font-weight: 850;
+}
+
+.header-newchat {
+  border: 1px solid rgba(214, 255, 127, 0.4);
+  background: rgba(214, 255, 127, 0.16);
+  color: #eaffc2;
+}
+
+.header-newchat:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .chat-scroll {
