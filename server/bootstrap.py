@@ -12,6 +12,7 @@ from models.chat import ChatMessage
 from models.knowledge import KnowledgeFile
 from models.product import Product
 from models.user import User
+from models.user_profile import UserProfile
 from services.rag_pipeline import infer_brand, infer_series
 from utils.security import hash_password, is_legacy_password
 

@@ -70,6 +70,17 @@ CHAT_MODEL = os.getenv("CHAT_MODEL", "glm-5.1")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-v4")
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "2048"))
 
+# ---- Cross-Encoder 语义重排（P0-1，复用 DashScope qwen3-rerank）----
+# gte-rerank 已于 2026-05-30 下线，官方推荐 qwen3-rerank。
+# 重排只在主进程 safe_search 内对"已召回候选"做二次排序，不在 chroma 子进程内，
+# 因此重排接口故障只退回启发式排序，绝不连累向量检索降级成空结果。
+RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() in {"true", "1", "yes", "on"}
+RERANK_MODEL = os.getenv("RERANK_MODEL", "qwen3-rerank")
+# 单次重排超时（秒）；超时/异常立即退回启发式，避免拖慢问答端点。
+RERANK_TIMEOUT = float(os.getenv("RERANK_TIMEOUT", "8"))
+# 原生 rerank 端点；留空则按 OPENAI_BASE_URL 推导（compatible-mode -> api/v1/services/rerank/...）。
+RERANK_BASE_URL = os.getenv("RERANK_BASE_URL", "").strip()
+
 RAG_TOP_K = int(os.getenv("RAG_TOP_K", "4"))
 RAG_CANDIDATE_K = int(os.getenv("RAG_CANDIDATE_K", "12"))
 RAG_RRF_K = int(os.getenv("RAG_RRF_K", "60"))

@@ -8,6 +8,7 @@ import logging
 import re
 import subprocess
 import sys as _sys
+from collections import Counter
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Dict, List, Optional, Sequence
@@ -32,6 +33,7 @@ from config import (
     RAG_CANDIDATE_K,
     RAG_RRF_K,
     RAG_RELEVANCE_THRESHOLD,
+    RERANK_ENABLED,
 )
 from services.rag_pipeline import (
     QueryAnalysis,
@@ -47,6 +49,10 @@ from services.rag_pipeline import (
     rerank_candidates,
     split_knowledge_sections,
     tokenize,
+    bm25_scores,
+    WORD_RE,
+    CHINESE_RE,
+    normalize_text,
 )
 
 logger = logging.getLogger(__name__)
@@ -246,6 +252,33 @@ class VectorStoreService:
             for document, score in results
         ]
 
+    @staticmethod
+    def _keyword_metadata_text(metadata: dict) -> str:
+        """构造用于 BM25 的文档元数据文本（与切分入库时的字段对齐）。"""
+        return " ".join(
+            str(part) for part in [
+                metadata.get("section_title", ""),
+                metadata.get("file_name", ""),
+                metadata.get("brand", ""),
+                metadata.get("series", ""),
+                " ".join(metadata.get("model_aliases", []) or []),
+            ] if part
+        )
+
+    @staticmethod
+    def _tokenize_counts(text: str) -> "Counter":
+        """词频感知分词：与 rag_pipeline.tokenize 同源，但保留重复以计算 tf（BM25 需要）。"""
+        normalized = normalize_text(text).lower()
+        tokens: list = list(WORD_RE.findall(normalized))
+        for segment in CHINESE_RE.findall(normalized):
+            tokens.append(segment)
+            if len(segment) == 1:
+                tokens.append(segment)
+            else:
+                tokens.extend(segment[i:i + 2] for i in range(len(segment) - 1))
+        tokens.extend(t.lower() for t in extract_model_tokens(text))
+        return Counter(tokens)
+
     def _keyword_recall(
         self,
         analysis: QueryAnalysis,
@@ -253,12 +286,13 @@ class VectorStoreService:
     ) -> List[RetrievalCandidate]:
         # P1c：按前置分类做 where 预过滤，减少全库拉取与内存扫描；
         # _build_documents 总会写入 category（缺失时回退 "general"），故该过滤安全。
+        # 纯读取 chroma（collection.get），不改写入/索引，"知识库向量库不要动"约束下安全。
         get_kwargs: Dict[str, object] = {"include": ["documents", "metadatas"]}
         if analysis.category:
             get_kwargs["where"] = {"category": analysis.category}
         data = self.vectorstore.get(**get_kwargs)
-        query_tokens = tokenize(analysis.expanded_query)
-        candidates = []
+
+        rows = []
         for content, metadata in zip(
             data.get("documents", []),
             data.get("metadatas", []),
@@ -271,32 +305,41 @@ class VectorStoreService:
                 and stored_category != analysis.category
             ):
                 continue
+            rows.append((content, metadata))
 
-            document_tokens = tokenize(content)
-            if not query_tokens:
-                continue
-            metadata_text = " ".join(
-                str(part) for part in [
-                    metadata.get("section_title", ""),
-                    metadata.get("file_name", ""),
-                    metadata.get("brand", ""),
-                    metadata.get("series", ""),
-                    " ".join(metadata.get("model_aliases", []) or []),
-                ] if part
-            )
-            metadata_tokens = tokenize(metadata_text)
-            coverage = len(query_tokens & (document_tokens | metadata_tokens)) / len(query_tokens)
-            title_tokens = tokenize(str(metadata.get("section_title", "")))
-            title_coverage = len(query_tokens & title_tokens) / len(query_tokens)
-            metadata_coverage = len(query_tokens & metadata_tokens) / len(query_tokens) if metadata_tokens else 0.0
-            score = min(1.0, coverage * 0.65 + title_coverage * 0.15 + metadata_coverage * 0.20)
-            if score > 0:
+        if not rows:
+            return []
+
+        # P1-1：BM25 关键词召回（替代原 token 覆盖率打分，引入 IDF 区分度）。
+        # 语料 = 内容 + 元数据文本；IDF 在"类别语料"内计算，无需重索引 chroma。
+        corpus = [
+            self._tokenize_counts(content + " " + self._keyword_metadata_text(meta))
+            for content, meta in rows
+        ]
+        doc_freq: Dict[str, int] = {}
+        for toks in corpus:
+            for term in toks:
+                doc_freq[term] = doc_freq.get(term, 0) + 1
+        doc_lens = [sum(toks.values()) for toks in corpus]
+        avgdl = sum(doc_lens) / len(doc_lens)
+        n_docs = len(corpus)
+
+        query_tokens = tokenize(analysis.expanded_query)
+        if not query_tokens:
+            return []
+
+        raw_scores = bm25_scores(query_tokens, corpus, doc_freq, doc_lens)
+
+        max_score = max(raw_scores)
+        candidates = []
+        for (content, metadata), raw in zip(rows, raw_scores):
+            norm = (raw / max_score) if max_score > 0 else 0.0
+            if norm > 0:
                 candidates.append(self._to_candidate(
                     Document(page_content=content, metadata=metadata),
                     "keyword",
-                    score,
+                    norm,
                 ))
-
         return sorted(candidates, key=lambda item: item.score, reverse=True)[:candidate_k]
 
     def search(
@@ -433,8 +476,12 @@ _CHROMA_CRASH_NOTE = (
 )
 
 
-def _chroma_error_note(err: str) -> str:
-    """把子进程回传的可捕获异常翻译成对用户/运维友好的原因。"""
+def _chroma_error_note(err: str, data: Optional[dict] = None) -> str:
+    """把子进程回传的可捕获异常翻译成对用户/运维友好的原因。
+
+    data 为子进程回传的完整 JSON（可能含 ``hnsw_corrupted`` / ``mode`` 标记），
+    用于区分 HNSW 损坏时是否已自动恢复，避免向用户传递误导性文案。
+    """
     lowered = err.lower()
     if "OPENAI_API_KEY" in err:
         return "向量检索不可用：OPENAI_API_KEY 未配置或无效（请在项目根 .env 中填写正确的 API Key）。"
@@ -444,6 +491,14 @@ def _chroma_error_note(err: str) -> str:
         return "向量检索不可用：向量化服务响应超时（请检查网络或 OPENAI_BASE_URL）。"
     # HNSW 索引损坏（chroma 1.5.9 Windows 常见问题）
     if any(kw in lowered for kw in ("hnsw", "segment reader", "compactor", "backfill")):
+        if data and data.get("hnsw_corrupted"):
+            mode = data.get("mode")
+            if mode == "search":
+                return ("向量库索引损坏（HNSW），检索已降级为空结果（不影响其他接口）。"
+                        "请重启后端服务后重新上传知识库文件以重建索引。")
+            if mode == "delete":
+                return ("向量库索引损坏（HNSW），删除未完成（文件记录已移除）。"
+                        "请重启后端服务后重新上传知识库文件以重建索引。")
         return ("向量库索引损坏（HNSW），已自动清理并重试。如果仍失败，"
                 "请重启后端服务后重新上传知识库文件。")
     return f"向量检索不可用：{err}"
@@ -480,11 +535,27 @@ def safe_search(
         return _degraded_chroma(_CHROMA_CRASH_NOTE, {"chroma": "vector store subprocess crashed (native)"})
     err = data.get("_error") if isinstance(data, dict) else None
     if err:
-        return _degraded_chroma(_chroma_error_note(err), {"chroma": err})
+        return _degraded_chroma(_chroma_error_note(err, data), {"chroma": err})
     docs = [
         Document(page_content=d["page_content"], metadata=d.get("metadata", {}))
         for d in data.get("documents", [])
     ]
+    # P0-1：Cross-Encoder 语义重排（主进程，隔离于 chroma 子进程）。
+    # 仅在开关开启且 rerank 返回有效结果时重排候选顺序；否则保留启发式顺序。
+    # rerank 故障（超时/鉴权/网络）只退回启发式，绝不因此丢掉检索结果。
+    if docs and RERANK_ENABLED:
+        try:
+            from services.rerank import rerank as _rerank
+            pairs = _rerank(query, [d.page_content for d in docs])
+            if pairs:
+                score_by_index = {idx: sc for idx, sc in pairs}
+                aligned = [score_by_index.get(i, 0.0) for i in range(len(docs))]
+                ordered = sorted(zip(aligned, docs), key=lambda item: item[0], reverse=True)
+                docs = [doc for _, doc in ordered]
+                for score, doc in ordered:
+                    doc.metadata["rerank_score"] = round(score, 6)
+        except Exception as exc:
+            logger.warning("rerank 应用失败，保留启发式排序：%s", exc)
     analysis = data.get("analysis")
     return SimpleNamespace(
         documents=docs,
@@ -514,7 +585,7 @@ def safe_add_documents(
         return 0, "vector store subprocess crashed (chroma env incompatible)"
     err = data.get("_error") if isinstance(data, dict) else None
     if err:
-        return 0, err
+        return 0, _chroma_error_note(err, data)
     return data.get("chunk_count", 0), None
 
 
@@ -526,4 +597,4 @@ def safe_delete_documents(file_id: int, timeout: int = 40) -> Optional[str]:
     if not data:
         return "vector store subprocess crashed (chroma env incompatible)"
     err = data.get("_error") if isinstance(data, dict) else None
-    return err
+    return _chroma_error_note(err, data)

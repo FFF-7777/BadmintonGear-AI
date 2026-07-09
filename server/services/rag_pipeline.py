@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
@@ -523,6 +525,46 @@ def rerank_candidates(
     if any(max(item.lexical_score, item.title_score, item.metadata_score, item.model_score) > 0 for item in ranked):
         return ranked[:top_k]
     return []
+
+
+# ============================================================================
+# BM25 关键词召回打分（P1-1，纯函数）
+# ============================================================================
+# 标准参数：k1 控制词频饱和度，b 控制文档长度归一
+_BM25_K1 = 1.5
+_BM25_B = 0.75
+
+
+def bm25_scores(
+    query_tokens: Sequence[str],
+    corpus: Sequence[Counter],
+    doc_freq: Dict[str, int],
+    doc_lens: Sequence[int],
+    k1: float = _BM25_K1,
+    b: float = _BM25_B,
+) -> List[float]:
+    """对语料逐文档计算 BM25 得分（纯函数，可在离线评测中直接验证）。
+
+    query_tokens：查询词元；corpus：每篇文档的词频 Counter；
+    doc_freq：词元在语料中的文档频率；doc_lens：每篇文档词元总数。
+    IDF 在给定语料内计算，无需重索引 chroma，满足"知识库向量库不要动"约束。
+    """
+    n_docs = len(corpus)
+    avgdl = (sum(doc_lens) / n_docs) if doc_lens else 0.0
+    out: List[float] = []
+    for i, toks in enumerate(corpus):
+        score = 0.0
+        dl = doc_lens[i]
+        for term in query_tokens:
+            if term not in doc_freq:
+                continue
+            tf = toks.get(term, 0)
+            if tf == 0:
+                continue
+            idf = math.log(1.0 + (n_docs - doc_freq[term] + 0.5) / (doc_freq[term] + 0.5))
+            score += idf * (tf * (k1 + 1.0)) / (tf + k1 * (1.0 - b + b * dl / avgdl))
+        out.append(score)
+    return out
 
 
 # ============================================================================

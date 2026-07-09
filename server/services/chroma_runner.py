@@ -130,6 +130,27 @@ def _do_delete(payload: dict) -> dict:
 _HANDLERS = {"search": _do_search, "add": _do_add, "delete": _do_delete}
 
 
+def _run_mode(mode: str, payload: dict) -> dict:
+    """按模式执行 Chroma 操作，并区分 HNSW 损坏的处置策略。
+
+    - add：写操作，HNSW 损坏时清空 chroma_db 后重试一次（源文件可重传恢复）。
+    - search / delete：HNSW 损坏**绝不**清空 chroma_db（清空=丢失全部已入库
+      向量），改为返回结构化错误 ``{"_error": ..., "hnsw_corrupted": True,
+      "mode": mode}``，交由主进程优雅降级（检索返回空、删除报失败）。
+    """
+    handler = _HANDLERS[mode]
+    if mode == "add":
+        return _wipe_chroma_and_retry(handler, payload)
+    try:
+        return handler(payload)
+    except Exception as exc:
+        last_err = f"{type(exc).__name__}: {exc}"
+        if mode in ("search", "delete") and _is_hnsw_error(last_err):
+            # 不自愈：清空整个向量库会丢失全部知识，交由主进程降级处理。
+            return {"_error": last_err, "hnsw_corrupted": True, "mode": mode}
+        raise
+
+
 def main() -> None:
     # Windows 下 sys.stdin 默认按 locale 编码（GBK）解码，会把主进程以字节模式发来的
     # UTF-8 字节读成乱码（锟斤拷），并连带污染下游逻辑。改用底层 buffer 读取原始字节，
@@ -141,12 +162,7 @@ def main() -> None:
     if handler is None:
         raise ValueError(f"unknown mode: {mode}")
 
-    # add/search/delete 操作都可能碰到 HNSW 索引损坏，统一走自动恢复
-    if mode == "add":
-        data = _wipe_chroma_and_retry(handler, payload)
-    else:
-        data = handler(payload)
-
+    data = _run_mode(mode, payload)
     sys.stdout.write(_safe_json_dumps(data))
 
 
