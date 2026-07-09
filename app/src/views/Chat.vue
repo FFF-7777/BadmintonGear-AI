@@ -133,11 +133,9 @@ const atBottom = ref(true)
 const wsRef = ref(null)
 const streamState = reactive({
   aiId: null,
-  pending: '',
 })
 
-// 用 requestAnimationFrame 把流式渲染与滚动节流到每帧一次，避免逐 token 重渲染抖动
-let rafFlushId = null
+// 仅对滚动做 rAF 节流，避免流式期间频繁 scrollTop 触发抖动
 let rafScrollId = null
 
 const suggestions = [
@@ -153,12 +151,7 @@ const showSuggestions = computed(() => messages.value.length === 0 && !loading.v
 
 function resetChat() {
   closeSocket()
-  if (rafFlushId) {
-    cancelAnimationFrame(rafFlushId)
-    rafFlushId = null
-  }
   streamState.aiId = null
-  streamState.pending = ''
   messages.value = []
   sessionId.value = ''
   ctxBrandId.value = ''
@@ -170,7 +163,6 @@ function resetChat() {
 function restoreChat() {
   const data = getChatHistory()
   streamState.aiId = null
-  streamState.pending = ''
   if (data && Array.isArray(data.messages)) {
     // 恢复时把残留的 streaming 标记复位，避免卡片卡在"正在生成"
     messages.value = data.messages.map((m) => ({ ...m, streaming: false }))
@@ -223,23 +215,16 @@ function scrollToBottom(force = false) {
   })
 }
 
-// 把缓冲的增量在下一帧一次性合并进消息，避免逐 token 触发重渲染导致上下跳动
-function flushRaf() {
-  rafFlushId = null
+// 直接把增量追加到当前消息，交给 Vue 原生响应式逐条渲染（最平滑的流式）；
+// 跳动/卡顿的真正来源是滚动与持久化，已分别用 rAF 节流与防抖处理。
+function appendDelta(delta) {
+  if (!delta) return
   const msg = messages.value.find((item) => item.id === streamState.aiId)
-  if (msg && streamState.pending) {
-    msg.content += streamState.pending
-    streamState.pending = ''
-  }
+  if (msg) msg.content += delta
   scrollToBottom()
 }
 
-function scheduleRafFlush() {
-  if (rafFlushId) return
-  rafFlushId = requestAnimationFrame(flushRaf)
-}
-
-// 持久化做防抖，避免流式每帧都写 localStorage 造成主线程卡顿
+// 持久化做防抖，避免流式每条增量都写 localStorage 造成主线程卡顿
 let persistTimer = null
 function schedulePersist(delay = 700) {
   if (persistTimer) clearTimeout(persistTimer)
@@ -317,15 +302,9 @@ async function askNow(preset) {
       sessionId.value = sid || sessionId.value
     },
     onContent: (delta) => {
-      streamState.pending += delta || ''
-      scheduleRafFlush()
+      appendDelta(delta || '')
     },
     onDone: (payload) => {
-      if (rafFlushId) {
-        cancelAnimationFrame(rafFlushId)
-        rafFlushId = null
-      }
-      flushRaf()
       const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
         msg.streaming = false
@@ -340,11 +319,6 @@ async function askNow(preset) {
       schedulePersist(0)
     },
     onError: (err) => {
-      if (rafFlushId) {
-        cancelAnimationFrame(rafFlushId)
-        rafFlushId = null
-      }
-      flushRaf()
       const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
         msg.streaming = false
@@ -397,7 +371,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   closeSocket()
-  if (rafFlushId) cancelAnimationFrame(rafFlushId)
+  if (rafScrollId) cancelAnimationFrame(rafScrollId)
+  if (persistTimer) clearTimeout(persistTimer)
 })
 </script>
 
