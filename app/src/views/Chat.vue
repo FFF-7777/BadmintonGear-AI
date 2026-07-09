@@ -67,6 +67,8 @@
 
             <div class="message-bubble" :class="m.role === 'user' ? 'message-bubble--user' : 'message-bubble--assistant'">
               <div v-if="m.role === 'user'" class="message-plain">{{ m.content }}</div>
+              <!-- 流式中的消息用独立 streamingText ref 直接绑定，保证逐字渲染可靠 -->
+              <MarkdownView v-else-if="m.streaming && m.id === streamState.aiId" :content="streamingText" />
               <MarkdownView v-else :content="m.content" />
             </div>
 
@@ -135,6 +137,9 @@ const streamState = reactive({
   aiId: null,
 })
 
+// 独立 ref 存放当前流式增量文本，模板直接绑定，绕开「数组内对象→computed→v-html」响应式链
+const streamingText = ref('')
+
 // 仅对滚动做 rAF 节流，避免流式期间频繁 scrollTop 触发抖动
 let rafScrollId = null
 
@@ -152,6 +157,7 @@ const showSuggestions = computed(() => messages.value.length === 0 && !loading.v
 function resetChat() {
   closeSocket()
   streamState.aiId = null
+  streamingText.value = ''
   messages.value = []
   sessionId.value = ''
   ctxBrandId.value = ''
@@ -163,6 +169,7 @@ function resetChat() {
 function restoreChat() {
   const data = getChatHistory()
   streamState.aiId = null
+  streamingText.value = ''
   if (data && Array.isArray(data.messages)) {
     // 恢复时把残留的 streaming 标记复位，避免卡片卡在"正在生成"
     messages.value = data.messages.map((m) => ({ ...m, streaming: false }))
@@ -215,10 +222,10 @@ function scrollToBottom(force = false) {
   })
 }
 
-// 直接把增量追加到当前消息，交给 Vue 原生响应式逐条渲染（最平滑的流式）；
-// 跳动/卡顿的真正来源是滚动与持久化，已分别用 rAF 节流与防抖处理。
+// 直接把增量追加到当前消息 + 独立 streamingText ref（模板直接绑定，100% 响应可靠）
 function appendDelta(delta) {
   if (!delta) return
+  streamingText.value += delta
   const msg = messages.value.find((item) => item.id === streamState.aiId)
   if (msg) msg.content += delta
   scrollToBottom()
@@ -250,6 +257,7 @@ function appendAssistantMessage() {
     streaming: true,
   })
   streamState.aiId = id
+  streamingText.value = ''   // 每条新回复重置流式文本
   return id
 }
 
@@ -305,6 +313,7 @@ async function askNow(preset) {
       appendDelta(delta || '')
     },
     onDone: (payload) => {
+      streamingText.value = ''
       const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
         msg.streaming = false
@@ -319,6 +328,7 @@ async function askNow(preset) {
       schedulePersist(0)
     },
     onError: (err) => {
+      streamingText.value = ''
       const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
         msg.streaming = false
