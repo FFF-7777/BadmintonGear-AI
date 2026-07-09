@@ -156,6 +156,8 @@ const showSuggestions = computed(() => messages.value.length === 0 && !loading.v
 
 function resetChat() {
   closeSocket()
+  if (streamRafId) { cancelAnimationFrame(streamRafId); streamRafId = null }
+  deltaBuffer = ''
   streamState.aiId = null
   streamingText.value = ''
   messages.value = []
@@ -222,13 +224,110 @@ function scrollToBottom(force = false) {
   })
 }
 
-// 直接把增量追加到当前消息 + 独立 streamingText ref（模板直接绑定，100% 响应可靠）
+// ── 流式增量：rAF 帧缓冲 ──
+// 每个 WS delta 不再立即触发 Vue 更新（那会导致 MarkdownView 对全文重新正则解析+ v-html 重绘）。
+// 改为累积到缓冲区，每帧最多 flush 一次，将 markdown 解析频率从"可能数百次/秒"压到 ≤60fps。
+let deltaBuffer = ''
+let streamRafId = null
+
+function flushDelta() {
+  streamRafId = null
+  if (!deltaBuffer) return
+  // 🔍 诊断：每次 rAF 刷出打日志
+  console.log(`[flushDelta] flushing len=${deltaBuffer.length} streamingText_before=${streamingText.value.length}`)
+  streamingText.value += deltaBuffer
+  const msg = messages.value.find((item) => item.id === streamState.aiId)
+  if (msg) msg.content += deltaBuffer
+  deltaBuffer = ''
+  scrollToBottom()
+}
+
 function appendDelta(delta) {
   if (!delta) return
-  streamingText.value += delta
-  const msg = messages.value.find((item) => item.id === streamState.aiId)
-  if (msg) msg.content += delta
-  scrollToBottom()
+  // 🔍 诊断：每次 appendDelta 调用打日志
+  console.log(`[appendDelta] len=${delta.length} buffer_before=${deltaBuffer.length}`)
+  deltaBuffer += delta
+  // 已有待执行的帧回调则只攒数据，不重复调度（同帧内多个 delta 合并一次渲染）
+  if (streamRafId) return
+  streamRafId = requestAnimationFrame(flushDelta)
+}
+
+/** 手动刷空剩余缓冲区（流结束时调用，确保最后一个字符不丢失） */
+function flushStreamBuffer() {
+  if (streamRafId) {
+    cancelAnimationFrame(streamRafId)
+    streamRafId = null
+  }
+  flushDelta()
+}
+
+// ── 推荐卡片过滤：只保留 AI 回答文本中实际提到的产品 ──
+// 后端推荐引擎独立返回产品列表（可能跨品类/数量多于文本中提到的），
+// 这里用文本匹配做交集，确保"AI 推荐几个就显示几张卡片"。
+const BRAND_ALIASES = {
+  '李宁': ['LI-NING', 'Lining', 'lining'], 'LI-NING': ['李宁', 'Lining', 'lining'],
+  '威克多': ['VICTOR', 'Victor', '胜利'], 'VICTOR': ['威克多', 'Victor', '胜利'],
+  '尤尼克斯': ['YONEX', 'Yonex', 'yy'], 'YONEX': ['尤尼克斯', 'Yonex'],
+  '川崎': ['KAWASAKI', 'Kawasaki'], 'KAWASAKI': ['川崎'],
+}
+
+function buildSearchTerms(product) {
+  const terms = []
+  const name = (product.title || product.name || '')
+  const brand = (product.brand || '')
+
+  // 完整名称
+  if (name) terms.push(name.toLowerCase())
+
+  // 名称中的型号部分（通常在空格/横线后的关键词）
+  // 如 "Li-NING 战戟 6000" → 提取 "战戟 6000", "6000", "战戟"
+  const parts = name.split(/[\s\-·_]+/).filter(Boolean)
+  if (parts.length >= 2) {
+    // 品牌后+型号：如 "战戟 6000", "极速 JS-12"
+    terms.push(parts.slice(1).join(' ').toLowerCase())
+    // 纯型号数字/字母：如 "6000", "JS-12"
+    const lastPart = parts[parts.length - 1]
+    if (/\d/.test(lastPart) || /[A-Z]{2,}/i.test(lastPart)) {
+      terms.push(lastPart.toLowerCase())
+    }
+  }
+  // 单词级别的型号（如 "BG80", "BG65", "JS-12"）
+  for (const p of parts) {
+    if (/[A-Z0-9]{2,}/i.test(p) && p.length >= 2) {
+      terms.push(p.toLowerCase())
+    }
+  }
+
+  // 品牌 + 型号组合
+  if (brand && parts.length >= 1) {
+    for (const alias of [...BRAND_ALIASES[brand] || [], brand]) {
+      if (parts.length >= 2) {
+        terms.push((alias + ' ' + parts.slice(-1)[0]).toLowerCase())
+      }
+      terms.push(alias.toLowerCase())
+    }
+  }
+
+  return [...new Set(terms)]
+}
+
+function filterProductsByAnswer(products, answerText) {
+  if (!products || !products.length || !answerText) return []
+  const text = answerText.toLowerCase()
+
+  return products.filter((p) => {
+    const terms = buildSearchTerms(p)
+    // 任一搜索词在文本中出现 → 该产品被 AI 提到
+    for (const term of terms) {
+      if (!term) continue
+      // 短词（≥3 字符）精确匹配，避免 "BG6" 匹配到 "BG65"
+      if (term.length >= 4 && text.includes(term)) return true
+      if (term.length >= 2 && /^[A-Z0-9]+$/i.test(term) && text.includes(term)) return true
+      // 中文词 ≥2 字符
+      if (/[\u4e00-\u9fff]/.test(term) && term.length >= 2 && text.includes(term)) return true
+    }
+    return false
+  })
 }
 
 // 持久化做防抖，避免流式每条增量都写 localStorage 造成主线程卡顿
@@ -313,6 +412,8 @@ async function askNow(preset) {
       appendDelta(delta || '')
     },
     onDone: (payload) => {
+      // 先刷空缓冲区（确保最后一个 rAF 帧的增量不丢失）
+      flushStreamBuffer()
       streamingText.value = ''
       const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
@@ -321,13 +422,22 @@ async function askNow(preset) {
           msg.content = payload.answer
         }
         msg.sources = payload.sources || []
-        msg.products = payload.recommended_products || []
+        const allProducts = payload.recommended_products || []
+        const answerText = msg.content || payload.answer || ''
+        // 过滤：只保留 AI 回答文本中实际提到的产品，确保"推荐几个显示几个"
+        const filtered = filterProductsByAnswer(allProducts, answerText)
+        // 兜底：如果过滤后一个都没匹配上（可能是匹配逻辑遗漏），保留原始列表
+        msg.products = filtered.length > 0 ? filtered : allProducts
+        console.log('[Chat] onDone: raw=', allProducts.length, 'filtered=', filtered.length,
+          'answer_len=', answerText.length,
+          filtered.length > 0 ? '✅ 文本匹配过滤' : '⚠️ 全量兜底（无匹配）')
       }
       loading.value = false
       scrollToBottom(true)
       schedulePersist(0)
     },
     onError: (err) => {
+      flushStreamBuffer()
       streamingText.value = ''
       const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
@@ -381,6 +491,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   closeSocket()
+  if (streamRafId) { cancelAnimationFrame(streamRafId); streamRafId = null }
   if (rafScrollId) cancelAnimationFrame(rafScrollId)
   if (persistTimer) clearTimeout(persistTimer)
 })

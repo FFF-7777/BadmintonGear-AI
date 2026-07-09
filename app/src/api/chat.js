@@ -223,6 +223,7 @@ export function chatStream(message, sessionId, handlers = {}) {
 
   let settled = false
   let authenticated = false
+  let contentCount = 0 // 🔍 诊断：统计 content 消息总数
 
   const done = (fn) => {
     if (settled) return
@@ -262,14 +263,24 @@ export function chatStream(message, sessionId, handlers = {}) {
         handlers.onSession?.(data.session_id)
         break
       case 'content':
-        handlers.onContent?.(data.content || '')
+        const c = data.content || ''
+        contentCount++ // 🔍 诊断：计数
+        // 🔍 诊断：每次收到 WS 文本增量时打日志（含时间戳和长度）
+        console.log(`[WS] #${contentCount} content delta len=${c.length} t=${Date.now()}`)
+        handlers.onContent?.(c)
         break
       case 'sources':
         handlers.onSources?.(data.sources || [])
         break
       case 'done':
         done(() => {
-          const products = (data.recommended_products || []).map(mapProduct).filter(Boolean)
+          const raw = data.recommended_products || []
+          const products = raw.map(mapProduct).filter(Boolean)
+          // 🔍 诊断：完整汇总
+          console.log(`[WS] done: 总 content 消息数=${contentCount}, raw products=${raw.length}, mapped=${products.length}, answer_len=${(data.answer || '').length}`)
+          if (products.length > 0) {
+            console.log('[chatStream] first product:', products[0].title, products[0].image?.slice(0, 60))
+          }
           handlers.onDone?.({
             answer: data.answer || '',
             sources: data.sources || [],

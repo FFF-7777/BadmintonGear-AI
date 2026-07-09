@@ -32,7 +32,7 @@ ACCESS_TOKEN_EXPIRE_HOURS = 24
 # CORS 允许的源，逗号分隔；默认仅允许本地前端开发端口
 CORS_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:5173,http://localhost:5174").split(",")
+    for origin in os.getenv("CORS_ORIGINS", "http://127.0.0.1:5183,http://127.0.0.1:5184,http://localhost:5183,http://localhost:5184").split(",")
     if origin.strip()
 ]
 
