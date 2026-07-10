@@ -197,3 +197,34 @@ class ModelMatchTests(unittest.TestCase):
         matches = match_products_for_query(_FakeDB([ax77, js12]), "YY 77 Pro 和 JS-12 有什么区别？")
 
         self.assertEqual([item["id"] for item in matches[:2]], [1, 2])
+
+    def test_model_match_keeps_grade_suffix_specific(self):
+        play = _make_product(
+            id=1,
+            name="YONEX ASTROX 99 PLAY",
+            brand="YONEX",
+            series="ASTROX",
+            model_aliases=["AX99PLAY", "ASTROX99PLAY"],
+            specs={"weight_class": "4U", "balance": "head-heavy", "shaft_flex": "medium", "source_confidence": "高"},
+        )
+        lcw_tour = _make_product(
+            id=2,
+            name="YONEX ASTROX 99 LCW TOUR",
+            brand="YONEX",
+            series="ASTROX",
+            model_aliases=["AX99LCWTOUR", "ASTROX99LCWTOUR"],
+            specs={"weight_class": "4U", "balance": "head-heavy", "shaft_flex": "medium", "source_confidence": "高"},
+        )
+        pro = _make_product(
+            id=3,
+            name="YONEX ASTROX 99 PRO",
+            brand="YONEX",
+            series="ASTROX",
+            model_aliases=["AX99PRO", "ASTROX99PRO"],
+            specs={"weight_class": "4U", "balance": "head-heavy", "shaft_flex": "stiff", "source_confidence": "高"},
+        )
+
+        matches = match_products_for_query(_FakeDB([play, lcw_tour, pro]), "ASTROX 99 PRO 怎么样？", limit=3)
+
+        self.assertEqual(matches[0]["id"], 3)
+        self.assertTrue(all(item["id"] == 3 for item in matches))

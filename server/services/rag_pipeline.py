@@ -40,9 +40,11 @@ MODEL_HEADING_RE = re.compile(
 WORD_RE = re.compile(r"[a-zA-Z0-9]+")
 CHINESE_RE = re.compile(r"[\u4e00-\u9fff]+")
 ASCII_MODEL_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9])(?:astrox|arcsaber|nanoflare|auraspeed|jetspeed|halbertec|ax|arcs|nf|as|js|tk|hx|pc)\s*[- ]?\d{1,4}[a-z0-9]{0,4}(?![A-Za-z0-9])"
+    r"(?i)(?<![A-Za-z0-9])(?:astrox|arcsaber|nanoflare|auraspeed|jetspeed|halbertec|ax|arcs|nf|as|js|tk|hx|pc)\s*[- ]?\d{1,4}(?:\s*(?:pro|tour|game|play|bp|lcw)){0,2}[a-z0-9]{0,2}(?![A-Za-z0-9])"
 )
-DIGIT_MODEL_RE = re.compile(r"(?i)(?<![A-Za-z0-9])\d{2,4}\s*[a-z]{1,3}\d{0,2}(?![A-Za-z0-9])")
+DIGIT_MODEL_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9])\d{2,4}\s*(?:pro|tour|game|play|bp|lcw|[a-z]{1,3}\d{0,2})(?![A-Za-z0-9])"
+)
 CHINESE_MODEL_RE = re.compile(
     r"(?:天斧|战戟|极速|神速|雷霆|弓箭|音速|疾光|锋影|驭|隼|65Z)\s*[- ]?\d{1,4}(?:\s*[A-Za-z]{1,4})?"
 )
@@ -55,7 +57,22 @@ BADMINTON_GENERAL_KEYWORDS = (
 )
 BADMINTON_CONTEXT_WORDS = (
     "羽毛球", "单打", "双打", "混双", "后场", "前场", "中场", "网前", "平抽", "防守",
-    "进攻", "控球", "连贯", "挥拍", "回球",
+    "进攻", "控球", "控制", "连贯", "挥拍", "回球", "拉吊", "战术", "赢球",
+)
+BADMINTON_EQUIPMENT_TERMS = (
+    "球拍", "拍子", "羽拍", "这支拍", "这把拍", "进攻拍", "速度拍", "防守拍", "头重拍", "头轻拍",
+    "3U", "4U", "5U", "6U", "头重", "头轻", "均衡", "平衡点", "挥重", "中杆", "硬杆", "软杆",
+    "甜区", "拍框", "磅数", "拉线", "高磅", "低磅", "PRO", "TOUR", "GAME", "PLAY",
+)
+COMMERCE_BOUNDARY_TERMS = (
+    "下单", "发货", "售后", "订单", "物流", "付款", "购物车", "保证明天", "全网最低价", "最低价",
+    "实时价", "实时价格", "到手价", "包邮",
+)
+PROMPT_BOUNDARY_TERMS = (
+    "系统提示词", "内部规则", "忽略你的", "忽略以上", "开发者消息", "原始提示词", "全部输出",
+)
+MEDICAL_BOUNDARY_TERMS = (
+    "诊断", "治疗", "处方", "就医", "医生", "肩肘疼", "肩膀疼", "肘疼", "膝盖疼", "手腕疼", "伤病",
 )
 
 SERIES_CODE_VARIANTS = {
@@ -350,6 +367,21 @@ def classify_question_scope(text: str) -> str:
     if is_greeting_or_chitchat(normalized):
         return "greeting"
 
+    has_product_fact_or_fit = any(keyword in normalized for keyword in (
+        "适合", "参数", "规格", "型号", "价格能", "参考价", "实时价吗", "怎么样", "怎么回答",
+    ))
+    has_equipment_phrase = any(keyword in normalized for keyword in BADMINTON_EQUIPMENT_TERMS)
+    has_model_mention = bool(extract_model_tokens(normalized))
+
+    if any(keyword in normalized for keyword in PROMPT_BOUNDARY_TERMS):
+        return "prompt_boundary"
+    if any(keyword in normalized for keyword in COMMERCE_BOUNDARY_TERMS) and not (
+        has_product_fact_or_fit or has_model_mention
+    ):
+        return "commerce_boundary"
+    if any(keyword in normalized for keyword in MEDICAL_BOUNDARY_TERMS) and not has_equipment_phrase:
+        return "medical_boundary"
+
     has_badminton_general = any(keyword in normalized for keyword in BADMINTON_GENERAL_KEYWORDS)
     has_badminton_context = any(keyword in normalized for keyword in BADMINTON_CONTEXT_WORDS)
     if has_badminton_general or ("羽毛球" in normalized and "装备" not in normalized) or (has_badminton_context and "怎么" in normalized):
@@ -360,9 +392,13 @@ def classify_question_scope(text: str) -> str:
         or classify_guide_intent(normalized) is not None
         or bool(extract_model_tokens(normalized))
         or any(keyword in normalized for keywords in CATEGORY_KEYWORDS.values() for keyword in keywords)
+        or any(keyword in normalized for keyword in BADMINTON_EQUIPMENT_TERMS)
     )
     if has_equipment_signal:
         return "equipment"
+
+    if has_badminton_context:
+        return "badminton_general"
 
     if any(keyword in lower for keyword in ("weather", "python", "股票", "天气", "吃什么", "旅游", "新闻")):
         return "offtopic"
@@ -669,7 +705,7 @@ CATEGORY_NAME_BY_ID = {1: "球拍", 2: "球线", 3: "羽毛球", 4: "球鞋"}
 CATEGORY_ALIASES = {
     1: ("球拍", "羽毛球拍", "拍子", "拍", "racket"),
     2: ("球线", "线", "拍线", "穿线", "string"),
-    3: ("羽毛球", "球", "鹅毛", "鸭毛", "shuttlecock"),
+    3: ("羽毛球", "鹅毛", "鸭毛", "shuttlecock"),
     4: ("球鞋", "鞋", "羽毛球鞋", "鞋子", "shoes"),
 }
 
@@ -765,7 +801,12 @@ def extract_constraints(text: str, history: Optional[Sequence] = None) -> GuideC
 
     constraints = GuideConstraints()
     for cid, aliases in CATEGORY_ALIASES.items():
-        if any(alias in merged for alias in aliases):
+        if cid == 3:
+            matched = any(alias in merged for alias in aliases if alias != "羽毛球")
+            matched = matched or ("羽毛球" in merged and "羽毛球拍" not in merged)
+        else:
+            matched = any(alias in merged for alias in aliases)
+        if matched:
             constraints.category_ids.append(cid)
             constraints.raw_categories.append(CATEGORY_NAME_BY_ID[cid])
 

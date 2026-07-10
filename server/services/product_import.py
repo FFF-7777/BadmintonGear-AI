@@ -20,7 +20,7 @@ from services.rag_pipeline import CATEGORY_NAME_BY_ID, infer_brand, infer_series
 from services.recommendation import serialize_product_card
 
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-ALLOWED_IMPORT_EXTS = {".xlsx", ".csv"}
+ALLOWED_IMPORT_EXTS = {".xlsx", ".csv", ".jsonl"}
 
 COMMON_FIELDS = [
     "name",
@@ -303,12 +303,105 @@ def parse_csv_rows(raw_bytes: bytes) -> List[Dict[str, str]]:
     return [{key.strip(): (value or "").strip() for key, value in row.items() if key} for row in reader]
 
 
+def _first_number(value: str) -> str:
+    match = re.search(r"\d+(?:\.\d+)?", value or "")
+    return match.group(0) if match else ""
+
+
+def _list_to_text(value) -> str:
+    if isinstance(value, list):
+        return ", ".join(str(item).strip() for item in value if str(item).strip())
+    return str(value or "").strip()
+
+
+def _map_specs_summary(summary: str) -> Dict[str, str]:
+    mapped: Dict[str, str] = {}
+    for part in re.split(r"[;；]", summary or ""):
+        if "=" not in part:
+            continue
+        key, value = [item.strip() for item in part.split("=", 1)]
+        if key == "重量规格":
+            mapped["weight_class"] = value
+        elif key == "平衡点":
+            if "头重" in value:
+                mapped["balance"] = "head-heavy"
+            elif "头轻" in value:
+                mapped["balance"] = "head-light"
+            elif "均衡" in value:
+                mapped["balance"] = "even-balanced"
+            else:
+                mapped["balance"] = value
+        elif key == "中杆硬度":
+            if "硬" in value:
+                mapped["shaft_flex"] = "stiff"
+            elif "软" in value:
+                mapped["shaft_flex"] = "flexible"
+            elif "中" in value:
+                mapped["shaft_flex"] = "medium"
+            else:
+                mapped["shaft_flex"] = value
+        elif key == "最高建议穿线磅数":
+            mapped["max_tension"] = value
+        elif key == "适合水平":
+            mapped["suitable_level"] = value.replace("/", ",")
+        elif key == "打法定位":
+            mapped["suitable_style"] = value.replace("/", ",")
+    return mapped
+
+
+def _normalize_jsonl_record(record: Dict) -> Dict[str, str]:
+    aliases = record.get("model_aliases", "")
+    if not aliases and record.get("model_display"):
+        aliases = [record["model_display"], record.get("model_canonical", "")]
+    description_parts = [
+        record.get("description"),
+        record.get("series_position"),
+        record.get("specs_summary"),
+        record.get("fit_summary"),
+        record.get("model_difference"),
+        record.get("caution_notes"),
+    ]
+    row = {
+        "name": record.get("model_display") or record.get("standard_name") or record.get("knowledge_name") or record.get("raw_name") or "",
+        "brand": record.get("brand", ""),
+        "series": record.get("series", ""),
+        "model_aliases": _list_to_text(aliases).replace("；", ","),
+        "description": "\n".join(str(part).strip() for part in description_parts if str(part or "").strip()),
+        "price": _first_number(str(record.get("price_ref") or record.get("reference_price") or "")),
+        "image": record.get("image_url", ""),
+        "source_url": record.get("source_url", ""),
+        "source_note": record.get("source_note") or record.get("price_note") or record.get("price_source") or "",
+        "manual_tags": _list_to_text([record.get("brand_cn", ""), record.get("series_position", "")]).replace("/", ","),
+        "source_confidence": record.get("source_confidence", ""),
+        "unverified_fields": "精确参数" if record.get("caution_notes") else "",
+    }
+    row.update(_map_specs_summary(record.get("specs_summary", "")))
+    return {key: str(value or "").strip() for key, value in row.items()}
+
+
+def parse_jsonl_rows(raw_bytes: bytes) -> List[Dict[str, str]]:
+    rows: List[Dict[str, str]] = []
+    text = raw_bytes.decode("utf-8-sig")
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            record = json.loads(stripped)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"JSONL 第 {line_no} 行格式错误: {exc.msg}") from exc
+        rows.append(_normalize_jsonl_record(record))
+    return rows
+
+
 def parse_import_rows(filename: str, raw_bytes: bytes) -> List[Dict[str, str]]:
     ext = Path(filename or "").suffix.lower()
     if ext not in ALLOWED_IMPORT_EXTS:
-        raise ValueError("仅支持 xlsx 或 csv 导入")
+        raise ValueError("仅支持 xlsx、csv 或 jsonl 导入")
     if ext == ".xlsx":
         return parse_xlsx_rows(raw_bytes)
+    if ext == ".jsonl":
+        return parse_jsonl_rows(raw_bytes)
     return parse_csv_rows(raw_bytes)
 
 

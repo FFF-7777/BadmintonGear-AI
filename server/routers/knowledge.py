@@ -17,6 +17,7 @@ from database import get_db
 from models.knowledge import KnowledgeFile
 from schemas.schemas import KnowledgeFileOut
 from services.file_parser import parse_file, get_file_type
+from services.knowledge_policy import is_vectorizable_knowledge_filename, vectorization_policy_message
 from services.rag_pipeline import extract_model_tokens, infer_brand, infer_doc_type, infer_series
 from services.vector_store import vector_store_service, safe_add_documents, safe_search, safe_delete_documents
 from utils.deps import get_current_admin
@@ -62,6 +63,8 @@ def upload_knowledge(
     file_type = get_file_type(filename)
     if file_type not in ALLOWED_TYPES:
         return error("不支持的文件格式，仅支持 txt/docx/pdf/markdown")
+    if not is_vectorizable_knowledge_filename(filename):
+        return error(vectorization_policy_message(filename), 400)
 
     # 保存文件到 D:/uploads14/knowledge/
     ext = Path(filename).suffix
@@ -134,6 +137,11 @@ def vectorize_knowledge(
     kf = db.query(KnowledgeFile).filter(KnowledgeFile.id == file_id).first()
     if not kf:
         return error("文件不存在", 404)
+    if not is_vectorizable_knowledge_filename(kf.file_name):
+        kf.status = 2
+        kf.error_msg = vectorization_policy_message(kf.file_name)[:500]
+        db.commit()
+        return error(kf.error_msg, 400)
 
     try:
         text = parse_file(kf.file_path, kf.file_type)

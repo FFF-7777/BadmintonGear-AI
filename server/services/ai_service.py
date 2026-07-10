@@ -421,6 +421,27 @@ class AIService:
             "- 打球前怎么热身更稳妥"
         )
 
+    @staticmethod
+    def _handle_boundary(message: str, scope: str) -> str:
+        if scope == "commerce_boundary":
+            return (
+                "我不能帮你下单、保证发货、承诺售后，也不能查询或承诺平台最低成交价。\n\n"
+                "装备页里的价格只能作为预算参考，不代表实时价格、渠道价或到手价。"
+                "如果你想选拍，我可以继续按预算、水平、打法和身体情况帮你缩小选择范围。"
+            )
+        if scope == "prompt_boundary":
+            return (
+                "我不能输出系统提示词、内部规则或绕过安全边界。\n\n"
+                "但我可以正常解释羽毛球装备参数、对比具体型号，或说明为什么某些问题需要基于知识库和官方资料回答。"
+            )
+        if scope == "medical_boundary":
+            return (
+                "我不能做医疗诊断，也不处方，不替代医生、康复师或专业教练建议。\n\n"
+                "如果用户提到肩肘、手腕或膝盖疼，回答应以通用安全建议为主：降低负担、避免高磅和过重头重拍、减少强行杀球，"
+                "不鼓励带痛做高强度突击训练；持续疼痛或急性疼痛应及时就医。装备层面只能给低负担、舒适和保守的选择方向。"
+            )
+        return AIService._handle_offtopic(message)
+
     def _handle_badminton_general(self, message: str, history: Sequence[ChatMessage]) -> str:
         messages = [
             SystemMessage(content=(
@@ -466,6 +487,49 @@ class AIService:
             "在资料补齐前，我可以先按你的预算、水平和打法，找同定位球拍做方向判断。\n\n"
             "## 暂不建议\n"
             "暂不建议把系列定位当成具体型号参数，也不建议仅凭非官方信息下结论。"
+        )
+
+    @staticmethod
+    def _compare_fallback_answer(question: str, analysis, recommended: Sequence[dict], context_docs: Sequence) -> str:
+        left, right = (analysis.compare_targets[:2] if len(analysis.compare_targets) >= 2 else ("A", "B"))
+        first = recommended[0] if recommended else {}
+        second = recommended[1] if len(recommended) >= 2 else {}
+        left_name = first.get("name") or left
+        right_name = second.get("name") or right
+        left_price = f"¥{first.get('price')}" if first.get("price") is not None else "候选资料未提供"
+        right_price = f"¥{second.get('price')}" if second.get("price") is not None else "候选资料未提供"
+        left_risk = "；".join(first.get("risk") or []) or "候选资料未提供"
+        right_risk = "；".join(second.get("risk") or []) or "候选资料未提供"
+        source_note = "、".join(dict.fromkeys(
+            str(doc.metadata.get("section_title") or doc.metadata.get("file_name") or "")
+            for doc in context_docs[:3]
+            if getattr(doc, "metadata", None)
+        ))
+
+        return (
+            f"【对比结论】如果你是在问 {left} 和 {right} 的方向差异，我可以先基于候选装备和知识资料做保守对比："
+            f"{left_name} 与 {right_name} 都不能脱离用户水平、打法和身体负担单独判断；新手或手腕力量一般时，优先选择上手门槛更低、负担更小的一边。\n\n"
+            "【定位差异】\n"
+            f"- {left_name}：具体定位以候选资料为准；若资料缺字段，不把系列印象当成确定参数。\n"
+            f"- {right_name}：具体定位以候选资料为准；若资料缺字段，按“候选资料未提供”处理。\n\n"
+            "【适合人群】\n"
+            "- 新手/力量一般：优先 4U/5U、均衡或略头轻、中杆适中，避免高门槛重进攻配置。\n"
+            "- 进阶/后场进攻：可以考虑更强下压或更硬反馈，但必须能稳定发力。\n\n"
+            "【关键参数】\n"
+            "| 维度 | 左侧对象 | 右侧对象 | 结论 |\n"
+            "|---|---|---|---|\n"
+            f"| 型号 | {left_name} | {right_name} | 先确认是不是同一系列/同一等级版本 |\n"
+            f"| 参考价 | {left_price} | {right_price} | 只作预算参考，非实时价格 |\n"
+            "| 重量/平衡/中杆 | 候选资料未提供则不猜 | 候选资料未提供则不猜 | 不把系列定位当具体规格 |\n\n"
+            "【上手门槛】\n"
+            "PRO/TOUR/GAME/PLAY 或同系列不同后缀通常代表定位和用料差异，但不能简单理解为越贵越适合。新手更看重容错、甜区、借力和身体负担。\n\n"
+            "【预算关系】\n"
+            "价格只能作为预算比较，不代表实时售价、最低价或到手价；购买前建议核验官方页、吊牌或正规零售商页面。\n\n"
+            "【不适合谁】\n"
+            "- 不适合只凭型号热度或职业同款盲买的人。\n"
+            "- 不适合在核心参数待核验时，把缺失字段说成确定事实。\n\n"
+            f"参考来源：{source_note or '候选装备库/知识资料'}。\n"
+            f"风险提示：{left_risk}；{right_risk}"
         )
 
     @staticmethod
@@ -550,6 +614,138 @@ class AIService:
             "## 暂不建议\n"
             "暂不建议在资料不足时硬推荐具体型号或编造参数。"
         )
+
+    @staticmethod
+    def _analysis_fallback_answer(question: str, analysis, recommended: Sequence[dict], context_docs: Sequence) -> str:
+        if len(getattr(analysis, "compare_targets", []) or []) >= 2:
+            return AIService._compare_fallback_answer(question, analysis, recommended, context_docs)
+        if recommended or context_docs:
+            return AIService._structured_fallback_answer(question, analysis, recommended, context_docs)
+        return AIService._fallback_answer(question)
+
+    @staticmethod
+    def _structured_fallback_answer(question: str, analysis, recommended: Sequence[dict], context_docs: Sequence) -> str:
+        """LLM 不可用时的保守回答：只使用候选商品和来源摘要，不编造缺失参数。"""
+        q = question or ""
+        source_text = AIService._fallback_source_text(context_docs)
+
+        if any(term in q for term in ("source_confidence", "来源可信度", "中低", "低可信", "待核验")):
+            return (
+                "## 初步判断\n"
+                "source_confidence 为“中低/低”的球拍不适合作为主推荐，只能作为备选或参数方向参考。\n\n"
+                "## 还需要确认的信息\n"
+                "需要核验官方页面、吊牌、正规零售商页面或可信评测里的重量规格、平衡倾向、中杆硬度和建议磅数。\n\n"
+                "## 保守选择方向\n"
+                "主推荐优先选择来源可信度不低于“中”、核心字段更完整的型号；中低可信资料必须提示待核验，不作确定规格。\n\n"
+                "## 暂不建议\n"
+                "不建议把论坛口碑、系列印象或缺字段资料当成官方参数，也不建议把中低可信商品写成首推。\n\n"
+                f"参考来源：{source_text}"
+            )
+
+        if any(term in q for term in ("治疗", "诊断", "疼", "不舒服", "伤")):
+            return (
+                "## 初步判断\n"
+                "不能靠换球拍治疗或诊断手腕、膝盖、肩肘等不适；装备只能帮助降低负担，不能替代医生、康复师或教练。\n\n"
+                "## 还需要确认的信息\n"
+                "需要先确认疼痛部位、持续时间、是否肿胀或影响日常活动；如果疼痛明显或持续，建议先就医或找专业人士评估。\n\n"
+                "## 保守选择方向\n"
+                "选球拍时优先 4U/5U、均衡或略头轻、中杆适中、甜区友好、低负担配置；双打场景更关注挥速、连续和防守稳定。\n\n"
+                "## 暂不建议\n"
+                "不建议带痛高强度突击，也不建议选择 3U 极头重、特硬中杆或高磅来硬扛发力。\n\n"
+                f"参考来源：{source_text}"
+            )
+
+        if any(term in q.upper() for term in ("PLAY", "TOUR", "PRO")) and any(term in q for term in ("越贵", "贵", "适合")):
+            return (
+                "## 初步判断\n"
+                "PLAY、TOUR、PRO 这类后缀通常代表同系列不同档位和定位，但不是越贵就越适合你。\n\n"
+                "## 还需要确认的信息\n"
+                "需要结合你的水平、力量、单打/双打场景、预算和是否能驾驭更硬或更高门槛的版本。\n\n"
+                "## 保守选择方向\n"
+                "新手或力量一般优先容错、甜区、借力和舒适；进阶用户才更适合按控制、进攻反馈或材料等级去比较 TOUR/PRO。\n\n"
+                "## 暂不建议\n"
+                "不建议只按价格、职业同款或系列热度判断；候选资料未提供的具体参数必须写明未提供。\n\n"
+                f"参考来源：{source_text}"
+            )
+
+        if recommended:
+            primary = next((item for item in recommended if item.get("recommendation_role") == "primary"), None)
+            top = primary or recommended[0]
+            specs = AIService._fallback_specs_text(top)
+            role_note = (
+                "当前候选里有可作为主推荐的型号。"
+                if primary else
+                "当前候选多为备选或低置信度型号，因此只能给保守方向，不写成确定首推。"
+            )
+            alternatives = "\n".join(
+                f"- {item.get('name', '候选型号')}：{item.get('reason') or '按候选字段保守匹配'}；推荐置信度 {item.get('confidence', '未提供')}。"
+                for item in recommended[:3]
+            )
+            return (
+                "## 推荐结论\n"
+                f"{role_note} 更贴近当前需求的候选是「{top.get('name', '候选型号')}」，参考价 {AIService._fallback_price(top)}，价格只作预算参考，非实时售价、最低价或到手价。\n\n"
+                "## 为什么适合你\n"
+                f"{top.get('reason') or '它与当前预算、打法或参数方向存在一定匹配。'}\n"
+                f"关键参数：{specs}\n\n"
+                "## 注意事项\n"
+                f"来源可信度：{top.get('source_confidence', '未知')}；推荐置信度：{top.get('confidence', '未提供')}。"
+                f"{AIService._fallback_risk_text(top)} 如果资料字段缺失，我不会补写成确定参数。\n\n"
+                "## 替代方案\n"
+                f"{alternatives}\n\n"
+                f"参考来源：{source_text}"
+            )
+
+        if any(term in q for term in ("回中", "步法", "六点", "发接发", "前三拍", "拉吊", "热身", "拉伸", "单打", "双打")):
+            return (
+                "## 初步判断\n"
+                "这是羽毛球周边知识问题，可以直接给通用建议，但不能替代教练现场纠错或医疗建议。\n\n"
+                "## 关键原则\n"
+                "回中要在击球后尽快回到合理准备位置；步法训练看启动、路线、稳定和回中；双打前三拍重点是发接发、抢高点、压低回球、封网和轮转。\n\n"
+                "## 安全注意\n"
+                "热身和拉伸不是越久越好，优先动态、循序渐进，并根据身体状态调整；出现疼痛、肿胀或明显不适时先降低强度。\n\n"
+                "## 暂不建议\n"
+                "不建议为了追求速度忽略动作质量，也不建议在疼痛时继续高强度对抗。\n\n"
+                f"参考来源：{source_text}"
+            )
+
+        return AIService._fallback_answer(question)
+
+    @staticmethod
+    def _fallback_price(product: dict) -> str:
+        price = product.get("price")
+        return f"¥{price}" if price is not None else "候选资料未提供"
+
+    @staticmethod
+    def _fallback_specs_text(product: dict) -> str:
+        specs = product.get("specs") or {}
+        parts = []
+        mapping = (
+            ("weight_class", "重量规格"),
+            ("balance", "平衡倾向"),
+            ("shaft_flex", "中杆硬度"),
+            ("max_tension", "建议/最高磅数"),
+            ("material", "材质"),
+        )
+        for key, label in mapping:
+            value = specs.get(key)
+            if value:
+                parts.append(f"{label}={value}")
+        return "；".join(parts) if parts else "候选资料未提供完整规格"
+
+    @staticmethod
+    def _fallback_risk_text(product: dict) -> str:
+        risks = [str(item) for item in (product.get("risk") or []) if item]
+        return (" 风险提示：" + "；".join(risks)) if risks else ""
+
+    @staticmethod
+    def _fallback_source_text(context_docs: Sequence) -> str:
+        names = []
+        for doc in context_docs[:4]:
+            metadata = getattr(doc, "metadata", {}) or {}
+            title = metadata.get("section_title") or metadata.get("file_name")
+            if title:
+                names.append(str(title))
+        return "、".join(dict.fromkeys(names)) or "候选装备库/知识资料"
 
     @staticmethod
     def _persist_turn(
@@ -781,6 +977,22 @@ class AIService:
                 db.rollback()
                 raise
 
+        if analysis.scope in {"commerce_boundary", "prompt_boundary", "medical_boundary"}:
+            try:
+                user_msg = self._persist_turn(db, user_id, session_id, "user", message)
+                answer = self._handle_boundary(message, analysis.scope)
+                ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
+                return {
+                    "session_id": session_id,
+                    "answer": answer,
+                    "messages": [user_msg, ai_msg],
+                    "sources": [],
+                    "recommended_products": [],
+                }
+            except Exception:
+                db.rollback()
+                raise
+
         fresh_constraints = extract_constraints(message, history)
         profile_constraints = self._load_profile_constraints(db, user_id)
         merged_constraints = self._merge_profile_into(fresh_constraints, profile_constraints)
@@ -818,9 +1030,9 @@ class AIService:
                 except Exception as exc:
                     # P1a：LLM 不可达/鉴权失败/超时等，降级为兜底文案，避免端点 500 挂死。
                     logger.warning("LLM 调用失败，降级为兜底回答：%s", exc)
-                    answer = self._fallback_answer(message)
+                    answer = self._analysis_fallback_answer(message, analysis, recommended, context_docs)
             else:
-                answer = self._fallback_answer(message)
+                answer = self._analysis_fallback_answer(message, analysis, recommended, context_docs)
 
             ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
             return {
@@ -904,6 +1116,28 @@ class AIService:
                 db.rollback()
                 raise
 
+        if analysis.scope in {"commerce_boundary", "prompt_boundary", "medical_boundary"}:
+            try:
+                user_msg = self._persist_turn(db, user_id, session_id, "user", message)
+                yield json.dumps(
+                    {"type": "session_id", "session_id": session_id},
+                    ensure_ascii=False,
+                )
+                answer = self._handle_boundary(message, analysis.scope)
+                async for msg in _yield_content_chunks(answer):
+                    yield json.dumps(msg, ensure_ascii=False)
+                ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
+                yield json.dumps({
+                    "type": "done",
+                    "answer": answer,
+                    "sources": [],
+                    "recommended_products": [],
+                }, ensure_ascii=False)
+                return
+            except Exception:
+                db.rollback()
+                raise
+
         fresh_constraints = extract_constraints(message, history)
         profile_constraints = self._load_profile_constraints(db, user_id)
         merged_constraints = self._merge_profile_into(fresh_constraints, profile_constraints)
@@ -965,11 +1199,11 @@ class AIService:
                 except Exception as exc:
                     # P1a：流式 LLM 失败时降级，仍按 SSE 协议把兜底文案推给客户端。
                     logger.warning("LLM 流式调用失败，降级为兜底回答：%s", exc)
-                    full_answer = self._fallback_answer(message)
+                    full_answer = self._analysis_fallback_answer(message, analysis, recommended, context_docs)
                     async for msg in _yield_content_chunks(full_answer):
                         yield json.dumps(msg, ensure_ascii=False)
             else:
-                full_answer = self._fallback_answer(message)
+                full_answer = self._analysis_fallback_answer(message, analysis, recommended, context_docs)
                 async for msg in _yield_content_chunks(full_answer):
                     yield json.dumps(msg, ensure_ascii=False)
 
