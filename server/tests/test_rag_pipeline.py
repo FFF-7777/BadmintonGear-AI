@@ -6,8 +6,11 @@ from services.rag_pipeline import (
     classify_question_scope,
     reciprocal_rank_fusion,
     rerank_candidates,
+    rewrite_query_for_retrieval,
     split_knowledge_sections,
 )
+from services.ai_service import AIService
+from langchain_core.documents import Document
 
 
 class QueryAnalysisTests(unittest.TestCase):
@@ -37,9 +40,40 @@ class QueryAnalysisTests(unittest.TestCase):
         self.assertIn("65Z3", analysis.model_tokens)
         self.assertEqual(analysis.compare_targets, [])
 
+    def test_rule_based_query_rewrite_adds_constraints(self):
+        rewritten = rewrite_query_for_retrieval("我手腕弱，但是想杀球重一点，买什么拍？")
+
+        self.assertIn("风险约束：手腕力量弱/手腕敏感", rewritten)
+        self.assertIn("不应推荐：3U极头重", rewritten)
+        self.assertIn("检索关键词", rewritten)
+
     def test_badminton_general_scope(self):
         self.assertEqual(classify_question_scope("打球前怎么热身比较好？"), "badminton_general")
         self.assertEqual(classify_question_scope("今天天气怎么样"), "offtopic")
+
+    def test_disabled_detail_category_fallback_does_not_recommend_model(self):
+        answer = AIService._fallback_answer("新手球鞋推荐什么型号？")
+
+        self.assertIn("具体型号推荐主要覆盖羽毛球拍", answer)
+        self.assertIn("不会硬推荐具体型号", answer)
+
+    def test_sources_include_confidence_and_unverified_fields(self):
+        sources = AIService._build_sources([
+            Document(
+                page_content="AX77 Pro 参数",
+                metadata={
+                    "file_id": 1,
+                    "file_name": "球拍库.md",
+                    "section_title": "AX77 Pro",
+                    "source_confidence": "中高",
+                    "unverified_fields": "实时价格,平衡点",
+                    "relevance_score": 0.82,
+                },
+            )
+        ])
+
+        self.assertEqual(sources[0]["source_confidence"], "中高")
+        self.assertEqual(sources[0]["unverified_fields"], ["实时价格", "平衡点"])
 
 
 class KnowledgeSplitTests(unittest.TestCase):

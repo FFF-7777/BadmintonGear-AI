@@ -67,6 +67,12 @@ OPENAI_BASE_URL = os.getenv(
 )
 # 默认值与 .env 保持一致，避免混淆
 CHAT_MODEL = os.getenv("CHAT_MODEL", "glm-5.1")
+CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "0.2"))
+CHAT_TOP_P = float(os.getenv("CHAT_TOP_P", "0.85"))
+CHAT_MAX_TOKENS = int(os.getenv("CHAT_MAX_TOKENS", "1200"))
+CHAT_FREQUENCY_PENALTY = float(os.getenv("CHAT_FREQUENCY_PENALTY", "0.1"))
+CHAT_PRESENCE_PENALTY = float(os.getenv("CHAT_PRESENCE_PENALTY", "0"))
+ENABLE_THINKING = os.getenv("ENABLE_THINKING", "false").lower() in {"true", "1", "yes", "on"}
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-v4")
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "2048"))
 
@@ -81,14 +87,33 @@ RERANK_TIMEOUT = float(os.getenv("RERANK_TIMEOUT", "8"))
 # 原生 rerank 端点；留空则按 OPENAI_BASE_URL 推导（compatible-mode -> api/v1/services/rerank/...）。
 RERANK_BASE_URL = os.getenv("RERANK_BASE_URL", "").strip()
 
-RAG_TOP_K = int(os.getenv("RAG_TOP_K", "4"))
-RAG_CANDIDATE_K = int(os.getenv("RAG_CANDIDATE_K", "12"))
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "6"))
+RAG_CANDIDATE_K = int(os.getenv("RAG_CANDIDATE_K", "30"))
 RAG_RRF_K = int(os.getenv("RAG_RRF_K", "60"))
 RAG_RELEVANCE_THRESHOLD = float(os.getenv("RAG_RELEVANCE_THRESHOLD", "0.15"))
 RAG_HISTORY_TURNS = int(os.getenv("RAG_HISTORY_TURNS", "6"))
-RAG_MAX_CONTEXT_CHARS = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "6000"))
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "500"))
-CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
+RAG_MAX_CONTEXT_CHARS = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "9000"))
+QUERY_REWRITE_ENABLED = os.getenv("QUERY_REWRITE_ENABLED", "true").lower() in {"true", "1", "yes", "on"}
+QUERY_REWRITE_MAX_CHARS = int(os.getenv("QUERY_REWRITE_MAX_CHARS", "300"))
+QUERY_REWRITE_TEMPERATURE = float(os.getenv("QUERY_REWRITE_TEMPERATURE", "0.1"))
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "120"))
+MIN_CHUNK_CHARS = int(os.getenv("MIN_CHUNK_CHARS", "180"))
+MAX_CHUNK_CHARS = int(os.getenv("MAX_CHUNK_CHARS", "1400"))
+SPLIT_BY_HEADING = os.getenv("SPLIT_BY_HEADING", "true").lower() in {"true", "1", "yes", "on"}
+KEEP_TABLES = os.getenv("KEEP_TABLES", "true").lower() in {"true", "1", "yes", "on"}
+KEEP_YAML_BLOCKS = os.getenv("KEEP_YAML_BLOCKS", "true").lower() in {"true", "1", "yes", "on"}
+PRODUCT_CHUNK_MODE = os.getenv("PRODUCT_CHUNK_MODE", "one_product_one_chunk")
+ENABLED_RECOMMENDATION_CATEGORIES = tuple(
+    item.strip()
+    for item in os.getenv("ENABLED_RECOMMENDATION_CATEGORIES", "racket").split(",")
+    if item.strip()
+)
+DISABLED_DETAIL_CATEGORIES = tuple(
+    item.strip()
+    for item in os.getenv("DISABLED_DETAIL_CATEGORIES", "string,shoes,shuttlecock").split(",")
+    if item.strip()
+)
 
 # ---- 接口限制 ----
 MAX_MESSAGE_LENGTH = int(os.getenv("MAX_MESSAGE_LENGTH", "1000"))

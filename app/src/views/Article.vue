@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getBrand, getCategory } from '@/data/knowledge'
 import { fetchProductDetail, fetchProducts } from '@/api/product'
@@ -103,11 +103,24 @@ function go(p) {
   router.push(p)
 }
 
-onMounted(async () => {
-  article.value = await fetchProductDetail(route.params.id)
+async function loadArticle(id) {
+  article.value = await fetchProductDetail(id)
   const res = await fetchProducts()
   products.value = res.list
+}
+
+onMounted(async () => {
+  await loadArticle(route.params.id)
 })
+
+watch(
+  () => route.params.id,
+  async (id, oldId) => {
+    if (id && id !== oldId) {
+      await loadArticle(id)
+    }
+  }
+)
 </script>
 
 <style scoped>

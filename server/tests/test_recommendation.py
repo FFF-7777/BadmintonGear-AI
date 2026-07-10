@@ -1,5 +1,6 @@
 """推荐引擎测试：硬过滤、评分维度、硬规则。"""
 import os
+import unittest
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
 
 from models.product import Product
@@ -7,8 +8,12 @@ from services.rag_pipeline import GuideConstraints
 from services.recommendation import (
     _apply_hard_rules,
     _budget_fit,
+    _confidence_fit,
     _spec_fit,
     _user_fit,
+    match_products_for_query,
+    serialize_product_card,
+    source_confidence_label,
 )
 
 
@@ -124,3 +129,71 @@ class TestSpecFit:
         )
         constraints = GuideConstraints(level="advanced")
         assert _spec_fit(product, constraints) >= 0.95
+
+
+class SourceConfidenceTests(unittest.TestCase):
+    def test_source_confidence_is_read_from_specs(self):
+        product = _make_product(specs={"source_confidence": "中高"})
+
+        self.assertEqual(source_confidence_label(product), "中高")
+        self.assertEqual(_confidence_fit(product), 0.9)
+
+    def test_low_confidence_product_is_backup_not_primary(self):
+        product = _make_product(
+            specs={
+                "weight_class": "4U",
+                "balance": "even-balanced",
+                "shaft_flex": "medium",
+                "source_confidence": "低",
+                "unverified_fields": ["平衡点"],
+            },
+        )
+
+        card = serialize_product_card(product, 0.95, "测试理由")
+
+        self.assertEqual(card["recommendation_role"], "backup")
+        self.assertEqual(card["source_confidence"], "低")
+        self.assertTrue(any("待核验字段：平衡点" in note for note in card["risk"]))
+
+
+class _FakeQuery:
+    def __init__(self, products):
+        self.products = products
+
+    def filter(self, *args, **kwargs):
+        return self
+
+    def all(self):
+        return self.products
+
+
+class _FakeDB:
+    def __init__(self, products):
+        self.products = products
+
+    def query(self, model):
+        return _FakeQuery(self.products)
+
+
+class ModelMatchTests(unittest.TestCase):
+    def test_compare_query_returns_both_matched_rackets(self):
+        ax77 = _make_product(
+            id=1,
+            name="YONEX ASTROX 77 PRO",
+            brand="YONEX",
+            series="ASTROX",
+            model_aliases=["AX77PRO", "天斧77PRO"],
+            specs={"weight_class": "4U", "balance": "head-heavy", "shaft_flex": "medium", "source_confidence": "高"},
+        )
+        js12 = _make_product(
+            id=2,
+            name="VICTOR JETSPEED JS-12",
+            brand="VICTOR",
+            series="JETSPEED",
+            model_aliases=["JS12", "极速12"],
+            specs={"weight_class": "4U", "balance": "even-balanced", "shaft_flex": "medium", "source_confidence": "高"},
+        )
+
+        matches = match_products_for_query(_FakeDB([ax77, js12]), "YY 77 Pro 和 JS-12 有什么区别？")
+
+        self.assertEqual([item["id"] for item in matches[:2]], [1, 2])

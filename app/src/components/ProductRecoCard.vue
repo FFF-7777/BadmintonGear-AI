@@ -17,16 +17,23 @@
           <p class="reco-series" v-if="product.series">{{ product.series }}</p>
         </div>
         <div class="reco-score">
-          <small>适配</small>
+          <small>{{ product.recommendationRole === 'backup' ? '备选' : '适配' }}</small>
           <strong>{{ formatScore(product.score) }}</strong>
         </div>
       </div>
 
       <p class="reco-summary">{{ product.summary }}</p>
 
+      <div v-if="product.confidence || product.sourceConfidence" class="reco-confidence">
+        <span v-if="product.confidence">推荐置信度 {{ product.confidence }}</span>
+        <span v-if="product.sourceConfidence">来源 {{ product.sourceConfidence }}</span>
+      </div>
+
       <div v-if="product.specs?.length" class="reco-specs">
         <span v-for="spec in product.specs.slice(0, 4)" :key="spec">{{ spec }}</span>
       </div>
+
+      <p v-if="product.risk?.length" class="reco-risk">{{ product.risk[0] }}</p>
 
       <div class="reco-foot">
         <div class="reco-price">
@@ -190,14 +197,16 @@ function formatScore(score) {
 }
 
 .reco-specs,
-.reco-tags {
+.reco-tags,
+.reco-confidence {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .reco-specs span,
-.reco-tags span {
+.reco-tags span,
+.reco-confidence span {
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 12px;
@@ -212,6 +221,18 @@ function formatScore(score) {
 .reco-tags span {
   color: #0f698a;
   background: rgba(224, 242, 254, 0.92);
+}
+
+.reco-confidence span {
+  color: #31505f;
+  background: rgba(226, 232, 240, 0.88);
+}
+
+.reco-risk {
+  margin: -2px 0 0;
+  color: #8a5a08;
+  font-size: 12px;
+  line-height: 1.48;
 }
 
 .reco-score {

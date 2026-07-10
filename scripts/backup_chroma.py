@@ -1,88 +1,101 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-备份 Chroma 向量库到项目内独立副本（backups/chroma_db_<时间戳>/）。
+"""Backup the local Chroma vector store, including the numpy fallback cache."""
 
-用途：HNSW 索引损坏（进程被强杀时易发）会让整个向量库不可用，
-重向量化要花时间+钱。有了这份备份，损坏时直接复制回去即可秒恢复。
+from __future__ import annotations
 
-重要：请在「后端已停止或空闲、且最近一次向量化已完成并落盘」时运行，
-以保证 Chroma 已正确 flush，备份是一致的。
-
-零 API 费用，纯本地文件操作。
-"""
-import os
-import sys
+import datetime as _dt
+import json
 import shutil
 import sqlite3
-import datetime
+import sys
+from pathlib import Path
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 项目根
-SRC = os.path.join(ROOT, "server", "chroma_db")
-DEST_PARENT = os.path.join(ROOT, "backups")
+import numpy as np
 
 
-def count_embeddings(meta_path):
-    """返回 chroma 中已索引的向量数；表不存在/异常返回 -1。"""
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "server" / "chroma_db"
+DEST_PARENT = ROOT / "backups"
+
+
+def count_embeddings(sqlite_path: Path) -> int:
     try:
-        con = sqlite3.connect(meta_path)
-        n = con.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
-        con.close()
-        return n
+        with sqlite3.connect(sqlite_path) as con:
+            return int(con.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0])
     except Exception:
         return -1
 
 
-def main():
-    force = "--force" in sys.argv
+def sqlite_integrity(sqlite_path: Path) -> str:
+    try:
+        with sqlite3.connect(sqlite_path) as con:
+            return str(con.execute("PRAGMA integrity_check").fetchone()[0])
+    except Exception as exc:
+        return f"error: {exc}"
 
-    if not os.path.isdir(SRC):
+
+def count_cache(chroma_dir: Path) -> tuple[int, int]:
+    npz_path = chroma_dir / "vector_cache.npz"
+    meta_path = chroma_dir / "vector_cache_meta.json"
+    if not npz_path.exists() or not meta_path.exists():
+        return -1, -1
+    vectors = np.load(npz_path, allow_pickle=False)
+    records = json.loads(meta_path.read_text(encoding="utf-8"))
+    return int(vectors["embeddings"].shape[0]), len(records)
+
+
+def directory_stats(path: Path) -> tuple[int, int]:
+    total_size = 0
+    file_count = 0
+    for item in path.rglob("*"):
+        if item.is_file():
+            total_size += item.stat().st_size
+            file_count += 1
+    return total_size, file_count
+
+
+def main() -> None:
+    force = "--force" in sys.argv
+    if not SRC.is_dir():
         print(f"[错误] 源目录不存在: {SRC}")
         sys.exit(1)
 
-    meta = os.path.join(SRC, "chroma.sqlite3")
-    # 护栏：向量库为空时备份无意义
-    if os.path.isfile(meta):
-        n = count_embeddings(meta)
-        if n == 0 and not force:
-            print("[警告] 当前向量库为空（0 embeddings），备份无意义。")
-            print("        请先完成知识库向量化，再运行本脚本。")
-            print("        （若确需备份空库，加 --force 参数。）")
-            sys.exit(1)
-        elif n > 0:
-            print(f"[信息] 向量库含 {n} 条向量，开始备份。")
-    else:
-        print("[警告] 未找到 chroma.sqlite3，可能不是有效向量库。")
+    sqlite_path = SRC / "chroma.sqlite3"
+    if not sqlite_path.exists():
+        print(f"[错误] 未找到 Chroma SQLite 文件: {sqlite_path}")
+        sys.exit(1)
 
-    # 复制前做完整性检查，避免备份一个已损坏的库
-    if os.path.isfile(meta):
-        try:
-            con = sqlite3.connect(meta)
-            res = con.execute("PRAGMA integrity_check").fetchone()[0]
-            con.close()
-            if res != "ok":
-                print(f"[警告] chroma.sqlite3 完整性检查未通过: {res}")
-                print("        当前库可能已损坏，备份价值有限。")
-        except Exception as e:
-            print(f"[警告] 无法校验 chroma.sqlite3: {e}")
+    embedding_count = count_embeddings(sqlite_path)
+    if embedding_count <= 0 and not force:
+        print(f"[警告] 当前向量库 embeddings={embedding_count}，不建议备份空库。")
+        print("        如确实要备份空库，请加 --force。")
+        sys.exit(1)
 
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    dest = os.path.join(DEST_PARENT, f"chroma_db_{ts}")
+    integrity = sqlite_integrity(sqlite_path)
+    if integrity != "ok" and not force:
+        print(f"[错误] chroma.sqlite3 完整性检查未通过: {integrity}")
+        print("        请先修复或确认后再加 --force 备份。")
+        sys.exit(1)
 
-    os.makedirs(DEST_PARENT, exist_ok=True)
+    cache_vectors, cache_records = count_cache(SRC)
+    if (cache_vectors != embedding_count or cache_records != embedding_count) and not force:
+        print("[错误] 本地向量快照不完整，拒绝备份。")
+        print(f"        embeddings={embedding_count}, cache_vectors={cache_vectors}, cache_records={cache_records}")
+        print("        请重新向量化生成 vector_cache，再备份。")
+        sys.exit(1)
+
+    timestamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest = DEST_PARENT / f"chroma_db_{timestamp}"
+    DEST_PARENT.mkdir(parents=True, exist_ok=True)
     shutil.copytree(SRC, dest)
 
-    total = 0
-    fcount = 0
-    for root, _, files in os.walk(dest):
-        for f in files:
-            fp = os.path.join(root, f)
-            total += os.path.getsize(fp)
-            fcount += 1
-
+    total_size, file_count = directory_stats(dest)
+    print(f"[信息] Chroma embeddings: {embedding_count}")
+    print(f"[信息] Vector cache records: {cache_records}")
     print(f"[完成] 已备份到: {dest}")
-    print(f"        大小: {total / 1024 / 1024:.1f} MB，文件数: {fcount}")
-    print(f"        恢复方法: 停后端 -> 删 server/chroma_db/ -> 把本目录复制回去 -> 重启后端")
+    print(f"        大小: {total_size / 1024 / 1024:.1f} MB，文件数: {file_count}")
+    print("        恢复方法: 停后端 -> 删 server/chroma_db/ -> 把本目录复制回去 -> 重启后端")
 
 
 if __name__ == "__main__":

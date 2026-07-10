@@ -40,22 +40,26 @@ CATEGORY_SPEC_FIELDS = {
     1: [
         "weight_class", "balance", "shaft_flex", "length", "max_tension", "material",
         "frame_material", "shaft_material", "suitable_level", "suitable_style", "play_type",
-        "highlight", "contraindications",
+        "highlight", "contraindications", "source_confidence", "unverified_fields",
     ],
     2: [
         "gauge", "feel", "repulsion", "durability", "hitting_sound", "control",
-        "tension_range", "suitable_level", "suitable_style",
+        "tension_range", "suitable_level", "suitable_style", "source_confidence", "unverified_fields",
     ],
     3: [
         "material", "speed", "durability", "flight", "stability", "usage_scene", "temperature_hint",
+        "source_confidence", "unverified_fields",
     ],
     4: [
         "cushion_score", "support_score", "grip_score", "ankle_support", "last_shape", "width_fit",
-        "weight", "upper_material", "suitable_level",
+        "weight", "upper_material", "suitable_level", "source_confidence", "unverified_fields",
     ],
 }
 
-ENUM_LIST_FIELDS = {"model_aliases", "manual_tags", "images", "suitable_level", "suitable_style", "play_type"}
+ENUM_LIST_FIELDS = {
+    "model_aliases", "manual_tags", "images", "suitable_level", "suitable_style",
+    "play_type", "unverified_fields",
+}
 DECIMAL_FIELDS = {"price", "cushion_score", "support_score", "grip_score"}
 SPEC_FLOAT_FIELDS = {"cushion_score", "support_score", "grip_score"}
 SPEC_INTEGER_FIELDS = set()
@@ -85,6 +89,8 @@ TEMPLATE_EXAMPLES = {
         "play_type": "singles,doubles",
         "highlight": "后场下压、杀球扎实",
         "contraindications": "纯新手或手腕力量不足者慎选",
+        "source_confidence": "中高",
+        "unverified_fields": "实时价格",
     },
     2: {
         "name": "YONEX BG80（示例）",

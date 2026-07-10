@@ -51,6 +51,13 @@ from config import (
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     CHAT_MODEL,
+    CHAT_TEMPERATURE,
+    CHAT_TOP_P,
+    CHAT_MAX_TOKENS,
+    CHAT_FREQUENCY_PENALTY,
+    CHAT_PRESENCE_PENALTY,
+    ENABLE_THINKING,
+    DISABLED_DETAIL_CATEGORIES,
     RAG_TOP_K,
     RAG_HISTORY_TURNS,
     RAG_MAX_CONTEXT_CHARS,
@@ -72,6 +79,12 @@ from services.recommendation import match_products_for_query, recommend_products
 _GUIDE_RECOMMEND_INTENTS = frozenset({
     "single_recommend", "bundle_recommend", "compare", "upgrade", "avoid",
 })
+_CATEGORY_KEY_BY_ID = {1: "racket", 2: "string", 3: "shuttlecock", 4: "shoes"}
+_DISABLED_DETAIL_CATEGORY_IDS = {
+    category_id
+    for category_id, key in _CATEGORY_KEY_BY_ID.items()
+    if key in DISABLED_DETAIL_CATEGORIES
+}
 
 # 候选装备块（注入 LLM 提示词）的预算控制：
 # 只展示最重要的前几个，并对规格 JSON 与整体长度封顶，避免挤占“知识资料”的上下文预算。
@@ -96,9 +109,13 @@ class AIService:
                 model=CHAT_MODEL,
                 openai_api_key=OPENAI_API_KEY,
                 openai_api_base=OPENAI_BASE_URL,
-                temperature=0.7,
-                # 关闭 qwen3 默认的深度思考模式，避免首 token 延迟高达 10s+（问答场景不需要推理过程）
-                extra_body={"enable_thinking": False},
+                temperature=CHAT_TEMPERATURE,
+                top_p=CHAT_TOP_P,
+                max_completion_tokens=CHAT_MAX_TOKENS,
+                frequency_penalty=CHAT_FREQUENCY_PENALTY,
+                presence_penalty=CHAT_PRESENCE_PENALTY,
+                # 导购型 RAG 默认关闭深度思考，降低延迟与发散；可通过 ENABLE_THINKING 显式开启。
+                extra_body={"enable_thinking": ENABLE_THINKING},
                 # P1a：单次请求超时（秒）。LLM 不可达时快速失败而非挂死端点；
                 # max_retries=1 避免重试拖长异常响应时间。
                 timeout=30,
@@ -111,11 +128,18 @@ class AIService:
         sources = []
         for index, document in enumerate(context_docs, start=1):
             metadata = document.metadata
+            unverified = metadata.get("unverified_fields") or metadata.get("pending_verification_fields") or metadata.get("待核验字段") or []
+            if isinstance(unverified, str):
+                unverified = [item.strip() for item in re.split(r"[,，/|]", unverified) if item.strip()]
             sources.append({
                 "ref": f"资料{index}",
                 "file_id": metadata.get("file_id"),
                 "file_name": metadata.get("file_name"),
                 "section_title": metadata.get("section_title"),
+                "doc_type": metadata.get("doc_type"),
+                "source_confidence": metadata.get("source_confidence") or metadata.get("confidence"),
+                "unverified_fields": unverified,
+                "matched_model": metadata.get("matched_model") or metadata.get("model_tokens"),
                 "score": metadata.get("relevance_score"),
             })
         return sources
@@ -147,12 +171,16 @@ class AIService:
         compare_hint = ""
         if recommended:
             guide_hint = (
-                "推荐类问题请严格按以下结构作答：\n"
-                "【推荐结论】品类 / 方向 / 预算\n"
-                "【为什么适合你】1、2、3\n"
-                "【具体可选装备】挑候选装备中合适的，写明名称·参考价·关键参数\n"
-                "【不建议你优先选择】…\n"
-                "【升级建议】…\n"
+                "推荐类问题请固定使用四段式回答：\n"
+                "## 推荐结论\n"
+                "## 为什么适合你\n"
+                "## 注意事项\n"
+                "## 替代方案\n"
+                "如果用户信息不足，改用：\n"
+                "## 初步判断\n"
+                "## 还需要确认的信息\n"
+                "## 保守选择方向\n"
+                "## 暂不建议\n"
             )
             # 候选装备块（P2e）：只展示前 PRODUCTS_MAX_SHOWN 个，规格 JSON 截断，
             # 整体封顶，保证“知识资料”优先占用上下文预算。
@@ -163,7 +191,10 @@ class AIService:
                     specs_json = specs_json[:PRODUCTS_MAX_SPECS] + "...(截断)"
                 lines.append(
                     f"{index}. {item['name']} ￥{item['price']}（{item['category_name']}）"
-                    f" 适配评分{item['score']} 适配理由：{item['reason']} 规格：{specs_json}"
+                    f" 适配评分{item['score']} 推荐角色：{item.get('recommendation_role', 'primary')}"
+                    f" 推荐置信度：{item.get('confidence', '中')} 来源可信度：{item.get('source_confidence', '未知')}"
+                    f" 适配理由：{item['reason']} 风险提示：{'；'.join(item.get('risk') or [])}"
+                    f" 规格：{specs_json}"
                 )
             products_block = "\n".join(lines)
             if len(products_block) > PRODUCTS_BLOCK_CAP:
@@ -236,6 +267,9 @@ class AIService:
         2. 不得推荐候选装备之外的具体型号。
            如果候选装备为空，或候选装备明显不匹配用户需求，只能说明“当前候选库中没有足够匹配的具体型号”，然后给出选购方向，不能硬编型号。
 
+        2.1 候选装备中的「推荐角色」为 backup 时，只能作为备选或补充说明，不得写成首推。
+            如果所有候选都是 backup，必须说明“当前没有足够可靠的首推型号”，再给保守方向。
+
         3. 价格只作为预算和选品对比参考。
            不得声称是实时售价、最低价、到手价、历史低价或平台成交价。
 
@@ -261,44 +295,12 @@ class AIService:
 
         【A. 用户要求推荐装备时】
 
-        回复开头必须先给「推荐装备清单」。
-        如果用户明确问球拍，可以写「推荐球拍清单」；
-        如果用户明确问球线，可以写「推荐球线清单」；
-        如果用户明确问球鞋，可以写「推荐球鞋清单」；
-        如果用户没有限定品类，统一写「推荐装备清单」。
-
-        清单格式：
-
-        1. 型号/装备名称 · 参考价 ¥XXX
-        2. 型号/装备名称 · 参考价 ¥XXX
-        3. 型号/装备名称 · 参考价 ¥XXX
-
-        要求：
-        - 清单中只列最终推荐的装备。
-        - 不要在清单前放大段分析。
-        - 如果价格缺失，写“参考价：暂无”。
-        - 推荐数量优先 2-4 个，除非用户明确要求更多。
-
-        然后再逐款解释，每款包含：
-
-        ### 1. XXX 型号
-
-        推荐结论：
-        - 简短说明适合 / 不适合谁。
-
-        适合原因：
-        - 结合用户水平、打法、预算、身体情况和候选装备字段解释。
-
-        注意事项：
-        - 说明可能的缺点、上手门槛、身体负担或预算问题。
-
-        替代方案：
-        - 从候选装备中给出替代选择。
-        - 如果没有合适替代，说明“当前候选装备中暂无更合适替代”。
-
-        最后给出「最终建议」：
-        - 明确告诉用户优先选哪一款。
-        - 如果用户条件不完整，可以补充 1-2 个关键追问，但不要让用户一次回答太多问题。
+        固定使用四段式：
+        ## 推荐结论
+        ## 为什么适合你
+        ## 注意事项
+        ## 替代方案
+        每一段都要短而具体；推荐具体型号时只能从候选装备中选。
 
         【B. 用户要求两个或多个装备对比时】
 
@@ -344,15 +346,12 @@ class AIService:
 
         不得编造型号。
 
-        必须这样回答：
-
-        “当前候选装备库中没有足够匹配的具体型号，因此我不能硬推荐具体装备。可以先按以下方向选择：”
-
-        然后给出：
-        - 适合的参数方向
-        - 预算建议
-        - 避坑点
-        - 需要补充的信息
+        固定使用：
+        ## 初步判断
+        ## 还需要确认的信息
+        ## 保守选择方向
+        ## 暂不建议
+        必须说明“当前候选装备库中没有足够匹配的具体型号，因此我不能硬推荐具体装备”。
 
         ====================
         四、回答风格
@@ -447,16 +446,26 @@ class AIService:
         if len(analysis.compare_targets) >= 2 and len(recommended) < 2:
             left, right = analysis.compare_targets[:2]
             return (
+                "## 初步判断\n"
                 f"我暂时还没有收齐「{left}」和「{right}」这两个对象的可比资料，所以现在不适合硬做结论。\n\n"
-                "你可以补充其中任一型号的正式名称、系列名，或把对应评测/参数文档上传到知识库；"
-                "如果你只是想比较定位，我也可以先按打法、预算和上手门槛给你做同定位替代对比。"
+                "## 还需要确认的信息\n"
+                "请补充其中任一型号的正式名称、系列名，或上传对应评测/参数文档。\n\n"
+                "## 保守选择方向\n"
+                "如果只是比较定位，我可以先按打法、预算和上手门槛给你做同定位替代对比。\n\n"
+                "## 暂不建议\n"
+                "暂不建议把缺资料的一边说成确定参数，也不建议据此直接购买。"
             )
 
         model_name = " / ".join(analysis.model_tokens[:2]) if analysis.model_tokens else message.strip()
         return (
+            "## 初步判断\n"
             f"我暂时还没有收录「{model_name}」这类具体型号的足够资料，所以不想乱给你编参数或强行下结论。\n\n"
-            "如果你愿意，可以继续告诉我它的品牌、系列或你的打法/预算，我可以先按同定位产品给你对比方向；"
-            "也可以把该型号的参数表、评测或品牌页上传进知识库。"
+            "## 还需要确认的信息\n"
+            "可以补充它的品牌、系列、重量规格，或上传该型号的参数表/评测/品牌页。\n\n"
+            "## 保守选择方向\n"
+            "在资料补齐前，我可以先按你的预算、水平和打法，找同定位球拍做方向判断。\n\n"
+            "## 暂不建议\n"
+            "暂不建议把系列定位当成具体型号参数，也不建议仅凭非官方信息下结论。"
         )
 
     @staticmethod
@@ -511,7 +520,36 @@ class AIService:
     def _fallback_answer(question: str) -> str:
         if question.strip().lower() in {"你好", "您好", "hello", "hi", "在吗"}:
             return "您好！我是羽智选 RAG AI，可以帮您按预算、水平、打法和品类对比羽毛球装备。"
-        return "抱歉，当前知识库没有足够信息回答这个问题。建议您补充预算、水平、打法、品类或品牌偏好。"
+        constraints = extract_constraints(question, [])
+        disabled_names = [
+            constraints.raw_categories[index]
+            for index, category_id in enumerate(constraints.category_ids)
+            if category_id in _DISABLED_DETAIL_CATEGORY_IDS and index < len(constraints.raw_categories)
+        ]
+        if disabled_names:
+            category_text = "、".join(dict.fromkeys(disabled_names))
+            return (
+                "## 初步判断\n"
+                f"当前知识库的具体型号推荐主要覆盖羽毛球拍，{category_text}还未完整入库，所以我不会硬推荐具体型号或编参数。\n\n"
+                "## 还需要确认的信息\n"
+                "如果后续要做具体型号推荐，需要补充该品类的商品库、参数字段、来源可信度和评估样例。\n\n"
+                "## 保守选择方向\n"
+                "- 球线：新手优先耐打和舒适，不要盲目高磅；\n"
+                "- 球鞋：优先合脚、支撑、防滑和缓震，宽脚要关注鞋楦；\n"
+                "- 羽毛球：按场馆温度、球速、耐打和飞行稳定性选择。\n\n"
+                "## 暂不建议\n"
+                "暂不建议在当前数据覆盖不足时给出球线、球鞋或羽毛球的具体型号结论。"
+            )
+        return (
+            "## 初步判断\n"
+            "当前知识库没有足够可靠的信息支撑我给出确定结论。\n\n"
+            "## 还需要确认的信息\n"
+            "建议补充预算、水平、打法、品类、品牌偏好或具体型号。\n\n"
+            "## 保守选择方向\n"
+            "新手优先 4U/5U、均衡或略头轻、中杆适中，不要盲目高磅或高门槛进攻拍。\n\n"
+            "## 暂不建议\n"
+            "暂不建议在资料不足时硬推荐具体型号或编造参数。"
+        )
 
     @staticmethod
     def _persist_turn(

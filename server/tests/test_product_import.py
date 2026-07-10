@@ -14,6 +14,8 @@ class ProductImportTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["name"], "YONEX 天斧 77 Pro（示例）")
         self.assertIn("AX77PRO", rows[0]["model_aliases"])
+        self.assertEqual(rows[0]["source_confidence"], "中高")
+        self.assertIn("实时价格", rows[0]["unverified_fields"])
 
     def test_category_can_be_inferred_from_headers(self):
         rows = parse_xlsx_rows(build_template_xlsx(4))

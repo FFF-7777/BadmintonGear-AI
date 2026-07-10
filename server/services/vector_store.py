@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Dict, List, Optional, Sequence
 
+import numpy as np
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -29,6 +30,8 @@ from config import (
     CHROMA_COLLECTION,
     CHUNK_SIZE,
     CHUNK_OVERLAP,
+    MIN_CHUNK_CHARS,
+    MAX_CHUNK_CHARS,
     RAG_TOP_K,
     RAG_CANDIDATE_K,
     RAG_RRF_K,
@@ -56,6 +59,9 @@ from services.rag_pipeline import (
 )
 
 logger = logging.getLogger(__name__)
+
+VECTOR_CACHE_NPZ = CHROMA_DIR / "vector_cache.npz"
+VECTOR_CACHE_META = CHROMA_DIR / "vector_cache_meta.json"
 
 
 @dataclass(frozen=True)
@@ -137,6 +143,7 @@ class VectorStoreService:
         else:
             documents = self.text_splitter.split_documents([Document(page_content=text)])
 
+        documents = self._merge_short_chunks(documents)
         fallback_category = infer_category(file_name) or "general"
         for index, document in enumerate(documents):
             section_title = str(document.metadata.get("section_title", "")).strip()
@@ -169,6 +176,147 @@ class VectorStoreService:
             document.metadata.update(meta)
         return documents
 
+    @staticmethod
+    def _merge_short_chunks(documents: List[Document]) -> List[Document]:
+        """Merge tiny trailing fragments so vector chunks stay retrievable and less noisy."""
+        merged: List[Document] = []
+        for document in documents:
+            content = (document.page_content or "").strip()
+            if not content:
+                continue
+
+            current_title = document.metadata.get("section_title")
+            previous_title = merged[-1].metadata.get("section_title") if merged else None
+            if (
+                merged
+                and len(content) < MIN_CHUNK_CHARS
+                and current_title == previous_title
+                and len(merged[-1].page_content) + len(content) + 2 <= MAX_CHUNK_CHARS
+            ):
+                merged[-1].page_content = f"{merged[-1].page_content.rstrip()}\n\n{content}"
+                continue
+
+            document.page_content = content
+            merged.append(document)
+        return merged
+
+    @staticmethod
+    def _load_vector_cache() -> Optional[dict]:
+        if not VECTOR_CACHE_NPZ.exists() or not VECTOR_CACHE_META.exists():
+            return None
+        try:
+            data = np.load(VECTOR_CACHE_NPZ, allow_pickle=False)
+            meta = json.loads(VECTOR_CACHE_META.read_text(encoding="utf-8"))
+            return {
+                "ids": [str(item) for item in data["ids"].tolist()],
+                "embeddings": data["embeddings"].astype("float32", copy=False),
+                "records": meta,
+            }
+        except Exception as exc:
+            logger.warning("本地向量快照读取失败: %s", exc)
+            return None
+
+    @staticmethod
+    def _save_vector_cache(ids: List[str], embeddings: np.ndarray, records: List[dict]) -> None:
+        CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(
+            VECTOR_CACHE_NPZ,
+            ids=np.array(ids, dtype=str),
+            embeddings=embeddings.astype("float32", copy=False),
+        )
+        VECTOR_CACHE_META.write_text(json.dumps(records, ensure_ascii=False), encoding="utf-8")
+
+    def _upsert_vector_cache(
+        self,
+        file_id: int,
+        ids: List[str],
+        documents: List[Document],
+        embeddings: Sequence[Sequence[float]],
+    ) -> None:
+        cache = self._load_vector_cache()
+        keep_ids: List[str] = []
+        keep_embeddings: List[np.ndarray] = []
+        keep_records: List[dict] = []
+        if cache:
+            for old_id, old_embedding, old_record in zip(
+                cache["ids"],
+                cache["embeddings"],
+                cache["records"],
+            ):
+                if (old_record.get("metadata") or {}).get("file_id") == file_id:
+                    continue
+                keep_ids.append(old_id)
+                keep_embeddings.append(old_embedding)
+                keep_records.append(old_record)
+
+        new_embeddings = [np.array(item, dtype="float32") for item in embeddings]
+        keep_ids.extend(ids)
+        keep_embeddings.extend(new_embeddings)
+        keep_records.extend([
+            {
+                "page_content": document.page_content,
+                "metadata": dict(document.metadata),
+            }
+            for document in documents
+        ])
+        if keep_embeddings:
+            self._save_vector_cache(keep_ids, np.vstack(keep_embeddings), keep_records)
+
+    def _delete_vector_cache_by_file_id(self, file_id: int) -> None:
+        cache = self._load_vector_cache()
+        if not cache:
+            return
+        keep_ids: List[str] = []
+        keep_embeddings: List[np.ndarray] = []
+        keep_records: List[dict] = []
+        for old_id, old_embedding, old_record in zip(
+            cache["ids"],
+            cache["embeddings"],
+            cache["records"],
+        ):
+            if (old_record.get("metadata") or {}).get("file_id") == file_id:
+                continue
+            keep_ids.append(old_id)
+            keep_embeddings.append(old_embedding)
+            keep_records.append(old_record)
+        if keep_embeddings:
+            self._save_vector_cache(keep_ids, np.vstack(keep_embeddings), keep_records)
+        else:
+            VECTOR_CACHE_NPZ.unlink(missing_ok=True)
+            VECTOR_CACHE_META.unlink(missing_ok=True)
+
+    def _cache_dense_recall(
+        self,
+        query: str,
+        route: str,
+        category: Optional[str],
+        candidate_k: int,
+    ) -> List[RetrievalCandidate]:
+        cache = self._load_vector_cache()
+        if not cache:
+            return []
+        query_vector = np.array(self.embeddings.embed_query(query), dtype="float32")
+        matrix = cache["embeddings"]
+        query_norm = np.linalg.norm(query_vector) or 1.0
+        matrix_norms = np.linalg.norm(matrix, axis=1)
+        scores = (matrix @ query_vector) / np.maximum(matrix_norms * query_norm, 1e-8)
+        ranked = np.argsort(-scores)
+        candidates: List[RetrievalCandidate] = []
+        for index in ranked:
+            record = cache["records"][int(index)]
+            metadata = dict(record.get("metadata") or {})
+            if category and metadata.get("category") != category:
+                continue
+            score = float((scores[int(index)] + 1.0) / 2.0)
+            candidates.append(self._to_candidate(
+                Document(page_content=record.get("page_content", ""), metadata=metadata),
+                route,
+                score,
+            ))
+            if len(candidates) >= candidate_k:
+                break
+        return candidates
+
     def add_documents(
         self,
         text: str,
@@ -197,15 +345,24 @@ class VectorStoreService:
         )
         existing_ids = set(existing.get("ids", []))
         ids = [document.metadata["chunk_id"] for document in documents]
+        texts = [document.page_content for document in documents]
+        metadatas = [dict(document.metadata) for document in documents]
+        embeddings = self.embeddings.embed_documents(texts)
         # Chroma 单次 upsert 有最大批量限制（~5461），超限报 ValueError。
         # 分批写入：先清旧再逐批 add，失败时已写部分可被下次重写的 upsert 覆盖。
         if existing_ids:
             self.vectorstore.delete(ids=list(existing_ids))
+        self._delete_vector_cache_by_file_id(file_id)
         _CHROMA_UPSERT_BATCH = 5000
         for i in range(0, len(documents), _CHROMA_UPSERT_BATCH):
-            batch_docs = documents[i : i + _CHROMA_UPSERT_BATCH]
             batch_ids = ids[i : i + _CHROMA_UPSERT_BATCH]
-            self.vectorstore.add_documents(batch_docs, ids=batch_ids)
+            self.vectorstore._collection.add(
+                ids=batch_ids,
+                documents=texts[i : i + _CHROMA_UPSERT_BATCH],
+                metadatas=metadatas[i : i + _CHROMA_UPSERT_BATCH],
+                embeddings=embeddings[i : i + _CHROMA_UPSERT_BATCH],
+            )
+        self._upsert_vector_cache(file_id, ids, documents, embeddings)
         return len(documents)
 
     def delete_by_file_id(self, file_id: int) -> None:
@@ -220,6 +377,7 @@ class VectorStoreService:
         ids = existing.get("ids", [])
         if ids:
             self.vectorstore.delete(ids=ids)
+        self._delete_vector_cache_by_file_id(file_id)
 
     @staticmethod
     def _to_candidate(document: Document, route: str, score: float) -> RetrievalCandidate:
@@ -240,17 +398,21 @@ class VectorStoreService:
         kwargs = {"k": candidate_k}
         if category:
             kwargs["filter"] = {"category": category}
-        results = self.vectorstore.similarity_search_with_relevance_scores(query, **kwargs)
+        try:
+            results = self.vectorstore.similarity_search(query, **kwargs)
 
-        # 兼容尚未重新入库、没有 category 元数据的旧向量。
-        if category and not results:
-            results = self.vectorstore.similarity_search_with_relevance_scores(
-                query,
-                k=candidate_k,
-            )
+            # 兼容尚未重新入库、没有 category 元数据的旧向量。
+            if category and not results:
+                results = self.vectorstore.similarity_search(
+                    query,
+                    k=candidate_k,
+                )
+        except Exception as exc:
+            logger.warning("Chroma dense recall failed, falling back to local vector cache: %s", exc)
+            return self._cache_dense_recall(query, route, category, candidate_k)
         return [
-            self._to_candidate(document, route, score)
-            for document, score in results
+            self._to_candidate(document, route, max(0.0, 1.0 - (rank / max(candidate_k, 1))))
+            for rank, document in enumerate(results)
         ]
 
     @staticmethod
@@ -291,13 +453,19 @@ class VectorStoreService:
         get_kwargs: Dict[str, object] = {"include": ["documents", "metadatas"]}
         if analysis.category:
             get_kwargs["where"] = {"category": analysis.category}
-        data = self.vectorstore.get(**get_kwargs)
-
         rows = []
-        for content, metadata in zip(
-            data.get("documents", []),
-            data.get("metadatas", []),
-        ):
+        try:
+            data = self.vectorstore.get(**get_kwargs)
+            source_rows = zip(data.get("documents", []), data.get("metadatas", []))
+        except Exception as exc:
+            logger.warning("Chroma metadata recall failed, falling back to local vector cache: %s", exc)
+            cache = self._load_vector_cache()
+            source_rows = [
+                (record.get("page_content", ""), record.get("metadata") or {})
+                for record in (cache or {}).get("records", [])
+            ]
+
+        for content, metadata in source_rows:
             metadata = metadata or {}
             stored_category = metadata.get("category")
             if (

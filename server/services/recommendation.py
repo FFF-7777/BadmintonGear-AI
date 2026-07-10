@@ -13,15 +13,19 @@
 """
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Optional, Sequence
 
 from sqlalchemy.orm import Session
 
+from config import ENABLED_RECOMMENDATION_CATEGORIES
 from models.product import Product
 from services.rag_pipeline import (
     CATEGORY_NAME_BY_ID,
     GuideConstraints,
+    extract_compare_targets,
     extract_model_tokens,
+    infer_brand,
     normalize_model_token,
     normalize_text,
 )
@@ -31,9 +35,45 @@ from services.rag_pipeline import (
 LEVEL_ORDER = {"beginner": 0, "intermediate": 1, "advanced": 2, "competitive": 3}
 LEVEL_CN = {"beginner": "新手", "intermediate": "进阶", "advanced": "高手", "competitive": "专业"}
 
-# 评分权重（仅使用可获取的 4 个维度，归一化后求和=1）
-_WEIGHTS = {"user_fit": 0.25, "style_fit": 0.20, "budget_fit": 0.15, "spec_fit": 0.15}
+# 评分权重：对齐新 RAG 改进清单，把来源可信度纳入排序。
+_WEIGHTS = {
+    "user_fit": 0.25,
+    "style_fit": 0.20,
+    "spec_fit": 0.20,
+    "budget_fit": 0.15,
+    "confidence_fit": 0.15,
+    "availability_fit": 0.05,
+}
 _WEIGHT_SUM = sum(_WEIGHTS.values())
+_CATEGORY_KEY_BY_ID = {1: "racket", 2: "string", 3: "shuttlecock", 4: "shoes"}
+_ENABLED_CATEGORY_IDS = {
+    category_id
+    for category_id, key in _CATEGORY_KEY_BY_ID.items()
+    if key in ENABLED_RECOMMENDATION_CATEGORIES
+}
+
+CONFIDENCE_SCORE_MAP = {
+    "高": 1.0,
+    "中高": 0.9,
+    "中": 0.75,
+    "中低": 0.45,
+    "低": 0.2,
+    "未知": 0.4,
+}
+_CONFIDENCE_ALIASES = {
+    "high": "高",
+    "medium_high": "中高",
+    "mid_high": "中高",
+    "medium": "中",
+    "mid": "中",
+    "medium_low": "中低",
+    "mid_low": "中低",
+    "low": "低",
+    "unknown": "未知",
+}
+_RACKET_REQUIRED_FACTS = ("weight_class", "balance", "shaft_flex")
+_UNVERIFIED_FIELD_KEYS = ("unverified_fields", "pending_verification_fields", "待核验字段")
+_MODEL_SUFFIX_RE = re.compile(r"\d{1,4}[A-Z]{0,6}$")
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +83,7 @@ _WEIGHT_SUM = sum(_WEIGHTS.values())
 def retrieve_candidates(db: Session, constraints: GuideConstraints) -> List[Product]:
     """按约束对商品库做硬过滤，返回候选商品列表。"""
     query = db.query(Product).filter(Product.status == 1)
+    query = query.filter(Product.category_id.in_(_ENABLED_CATEGORY_IDS or {-1}))
     if constraints.category_ids:
         query = query.filter(Product.category_id.in_(constraints.category_ids))
     if constraints.budget_max is not None:
@@ -58,6 +99,69 @@ def _ensure_list(value) -> List[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
     return [part.strip() for part in str(value).split(",") if part.strip()]
+
+
+def source_confidence_label(product: Product) -> str:
+    """读取商品来源可信度；当前兼容放在 specs.source_confidence 的存量方案。"""
+    specs = product.specs or {}
+    raw = specs.get("source_confidence") or specs.get("confidence") or "未知"
+    label = str(raw).strip()
+    if not label:
+        return "未知"
+    normalized = label.lower().replace("-", "_").replace(" ", "_")
+    return _CONFIDENCE_ALIASES.get(normalized, label)
+
+
+def _confidence_fit(product: Product) -> float:
+    return CONFIDENCE_SCORE_MAP.get(source_confidence_label(product), CONFIDENCE_SCORE_MAP["未知"])
+
+
+def _unverified_fields(product: Product) -> List[str]:
+    specs = product.specs or {}
+    fields: List[str] = []
+    for key in _UNVERIFIED_FIELD_KEYS:
+        fields.extend(_ensure_list(specs.get(key)))
+    return list(dict.fromkeys(fields))
+
+
+def _has_minimum_primary_facts(product: Product) -> bool:
+    if product.category_id != 1:
+        return False
+    specs = product.specs or {}
+    return sum(1 for field in _RACKET_REQUIRED_FACTS if specs.get(field)) >= 2
+
+
+def _is_primary_recommendation(product: Product) -> bool:
+    return _confidence_fit(product) >= CONFIDENCE_SCORE_MAP["中"] and _has_minimum_primary_facts(product)
+
+
+def _risk_notes(product: Product) -> List[str]:
+    notes = ["参考价仅用于预算对比，不代表实时售价。"]
+    source_confidence = source_confidence_label(product)
+    if source_confidence in {"中低", "低", "未知"}:
+        notes.append(f"来源可信度为“{source_confidence}”，购买前建议核验品牌官方页或正规零售商页面。")
+    fields = _unverified_fields(product)
+    if fields:
+        notes.append("待核验字段：" + "、".join(fields))
+    return notes
+
+
+def recommendation_confidence(product: Product, constraints: GuideConstraints) -> str:
+    """面向前端/LLM 的推荐置信度，不等同于来源可信度。"""
+    source_score = _confidence_fit(product)
+    user_info_score = sum(bool(value) for value in [
+        constraints.level,
+        constraints.style,
+        constraints.play_type,
+        constraints.budget_min is not None or constraints.budget_max is not None,
+    ])
+    if source_score >= 0.9 and user_info_score >= 2 and _has_minimum_primary_facts(product):
+        return "高"
+    if source_score >= 0.75 and _has_minimum_primary_facts(product):
+        return "中高" if user_info_score >= 1 else "中"
+    if source_score >= 0.45:
+        return "中"
+    return "低"
 
 
 def derive_display_tags(product: Product) -> List[str]:
@@ -90,6 +194,8 @@ def derive_display_tags(product: Product) -> List[str]:
 
 
 def serialize_product_card(product: Product, score: float, reason: str) -> Dict:
+    source_confidence = source_confidence_label(product)
+    confidence = recommendation_confidence(product, GuideConstraints())
     return {
         "id": product.id,
         "name": product.name,
@@ -101,10 +207,83 @@ def serialize_product_card(product: Product, score: float, reason: str) -> Dict:
         "category_name": CATEGORY_NAME_BY_ID.get(product.category_id, ""),
         "score": round(score, 3),
         "reason": reason,
+        "source_confidence": source_confidence,
+        "confidence": confidence,
+        "recommendation_role": "primary" if _is_primary_recommendation(product) else "backup",
+        "risk": _risk_notes(product),
         "specs": product.specs or {},
         "tags": derive_display_tags(product),
         "manual_tags": _ensure_list(product.manual_tags),
     }
+
+
+def _product_match_keys(product: Product) -> set:
+    parts = [
+        product.name,
+        product.brand or "",
+        product.series or "",
+        " ".join(_ensure_list(product.model_aliases)),
+    ]
+    keys = {
+        normalize_model_token(part)
+        for part in parts
+        if normalize_model_token(part)
+    }
+    for part in parts:
+        for token in extract_model_tokens(part):
+            keys.add(normalize_model_token(token))
+    return {key for key in keys if key}
+
+
+def _model_suffix(token: str) -> str:
+    match = _MODEL_SUFFIX_RE.search(normalize_model_token(token))
+    return match.group(0) if match else ""
+
+
+def _product_match_score(product: Product, query_text: str) -> tuple:
+    normalized_query = normalize_text(query_text)
+    query_key = normalize_model_token(normalized_query)
+    query_tokens = {normalize_model_token(token) for token in extract_model_tokens(normalized_query)}
+    query_suffixes = {_model_suffix(token) for token in query_tokens}
+    query_suffixes.discard("")
+    product_keys = _product_match_keys(product)
+    product_suffixes = {_model_suffix(key) for key in product_keys}
+    product_suffixes.discard("")
+    haystack = normalize_model_token(" ".join(filter(None, [
+        product.name,
+        product.brand or "",
+        product.series or "",
+        " ".join(_ensure_list(product.model_aliases)),
+    ])))
+
+    overlap = query_tokens & product_keys
+    score = 0.0
+    reasons: List[str] = []
+    if overlap:
+        score += 1.2
+        reasons.append("型号别名精确命中：" + ", ".join(sorted(overlap)))
+    if any(key and key in query_key for key in product_keys if len(key) >= 4):
+        score += 1.0
+        reasons.append("商品名/别名出现在问题中")
+    if query_key and query_key in haystack:
+        score += 0.7
+        reasons.append("问题文本直接命中商品信息")
+
+    suffix_overlap = query_suffixes & product_suffixes
+    inferred_brand = infer_brand(normalized_query)
+    brand_hit = bool(
+        product.brand
+        and (
+            product.brand.upper() in normalized_query.upper()
+            or (inferred_brand and inferred_brand.upper() == product.brand.upper())
+        )
+    )
+    series_hit = bool(product.series and normalize_model_token(product.series) in query_key)
+    if suffix_overlap and (brand_hit or series_hit):
+        score += 0.65
+        reasons.append("品牌/系列 + 数字型号命中：" + ", ".join(sorted(suffix_overlap)))
+
+    return score, "；".join(dict.fromkeys(reasons)) if reasons else ""
 
 
 def match_products_for_query(
@@ -120,37 +299,44 @@ def match_products_for_query(
     if not query_tokens and len(normalized_query) < 2:
         return []
 
+    products = [
+        product
+        for product in db.query(Product).filter(Product.status == 1).all()
+        if product.category_id in _ENABLED_CATEGORY_IDS
+    ]
     candidates: List[Dict] = []
-    for product in db.query(Product).filter(Product.status == 1).all():
-        name_tokens = {normalize_model_token(token) for token in extract_model_tokens(product.name)}
-        alias_tokens = {normalize_model_token(token) for token in _ensure_list(product.model_aliases)}
-        pool = {
-            normalize_model_token(product.name),
-            normalize_model_token(product.series or ""),
-            normalize_model_token(product.brand or ""),
-            *name_tokens,
-            *alias_tokens,
-        }
-        overlap = query_tokens & pool if query_tokens else set()
-        haystack = normalize_text(" ".join(filter(None, [
-            product.name,
-            product.brand or "",
-            product.series or "",
-            " ".join(_ensure_list(product.model_aliases)),
-        ]))).lower()
-
-        score = 0.0
-        if overlap:
-            score += 1.0
-        if normalized_query.lower() in haystack:
-            score += 0.7
+    product_by_id = {}
+    for product in products:
+        if product.category_id not in _ENABLED_CATEGORY_IDS:
+            continue
+        score, reason = _product_match_score(product, query_text)
         if score > 0:
-            reason = "型号或系列名直接命中"
-            if overlap:
-                reason = f"识别到型号别名：{', '.join(sorted(overlap))}"
-            candidates.append(serialize_product_card(product, score, reason))
+            card = serialize_product_card(product, score, reason)
+            candidates.append(card)
+            product_by_id[card["id"]] = product
 
     candidates.sort(key=lambda item: item["score"], reverse=True)
+    targets = extract_compare_targets(query_text)
+    if len(targets) >= 2:
+        selected: List[Dict] = []
+        selected_ids = set()
+        for target in targets[:2]:
+            target_candidates = []
+            for item in candidates:
+                product = product_by_id.get(item["id"])
+                if not product:
+                    continue
+                score, _ = _product_match_score(product, target)
+                if score > 0:
+                    target_candidates.append((score, item))
+            target_candidates.sort(key=lambda pair: pair[0], reverse=True)
+            if target_candidates:
+                item = target_candidates[0][1]
+                if item["id"] not in selected_ids:
+                    selected.append(item)
+                    selected_ids.add(item["id"])
+        selected.extend(item for item in candidates if item["id"] not in selected_ids)
+        return selected[:limit]
     return candidates[:limit]
 
 
@@ -197,6 +383,10 @@ def _budget_fit(product: Product, constraints: GuideConstraints) -> float:
     if ratio <= 1.0:
         return 0.75
     return 0.0
+
+
+def _availability_fit(product: Product) -> float:
+    return 1.0 if product.status == 1 else 0.0
 
 
 def _spec_fit(product: Product, constraints: GuideConstraints) -> float:
@@ -348,18 +538,28 @@ def score_and_rank(
         style_fit = _style_fit(product, constraints)
         budget_fit = _budget_fit(product, constraints)
         spec_fit = _spec_fit(product, constraints)
+        confidence_fit = _confidence_fit(product)
+        availability_fit = _availability_fit(product)
         final = (
             _WEIGHTS["user_fit"] * user_fit
             + _WEIGHTS["style_fit"] * style_fit
-            + _WEIGHTS["budget_fit"] * budget_fit
             + _WEIGHTS["spec_fit"] * spec_fit
+            + _WEIGHTS["budget_fit"] * budget_fit
+            + _WEIGHTS["confidence_fit"] * confidence_fit
+            + _WEIGHTS["availability_fit"] * availability_fit
         ) / _WEIGHT_SUM
 
-        ranked.append({
-            **serialize_product_card(product, final, _build_reason(product, constraints)),
-        })
+        card = serialize_product_card(product, final, _build_reason(product, constraints))
+        card["confidence"] = recommendation_confidence(product, constraints)
+        ranked.append(card)
 
-    ranked.sort(key=lambda item: item["score"], reverse=True)
+    ranked.sort(
+        key=lambda item: (
+            1 if item.get("recommendation_role") == "primary" else 0,
+            item["score"],
+        ),
+        reverse=True,
+    )
     # 组合推荐：每个品类最多保留 2 个，避免单品类霸榜
     if intent == "bundle_recommend":
         per_cat: Dict[int, int] = {}

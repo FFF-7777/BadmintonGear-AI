@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
 from collections import Counter
 from dataclasses import dataclass, field
@@ -93,6 +94,8 @@ BRAND_ALIASES = {
     "KUMPOO": ("KUMPOO", "薰风"),
     "KASON": ("KASON", "凯胜"),
 }
+QUERY_REWRITE_ENABLED = os.getenv("QUERY_REWRITE_ENABLED", "true").lower() in {"true", "1", "yes", "on"}
+QUERY_REWRITE_MAX_CHARS = int(os.getenv("QUERY_REWRITE_MAX_CHARS", "300"))
 
 
 @dataclass(frozen=True)
@@ -284,6 +287,53 @@ def _expand_query(query: str) -> str:
     return normalize_text(f"{query} {' '.join(dict.fromkeys(additions))}")
 
 
+def rewrite_query_for_retrieval(query: str, history: Optional[Sequence] = None) -> str:
+    """把口语问题整理成稳定检索文本；纯规则实现，不访问 LLM。"""
+    constraints = extract_constraints(query, history)
+    normalized = normalize_text(query)
+    model_tokens = extract_model_tokens(normalized)
+    keywords = sorted(tokenize(_expand_query(normalized)), key=lambda value: (-len(value), value))
+
+    level_map = {"beginner": "新手", "intermediate": "进阶", "advanced": "高手", "competitive": "竞技"}
+    style_map = {"attack": "进攻", "defense": "防守", "control": "控制", "balanced": "均衡"}
+    play_map = {"singles": "单打", "doubles": "双打", "mixed": "混双"}
+    physical_map = {
+        "knee_sensitive": "膝盖敏感",
+        "ankle_sensitive": "脚踝敏感",
+        "wrist_sensitive": "手腕力量弱/手腕敏感",
+        "shoulder_sensitive": "肩部敏感",
+    }
+
+    profile = "、".join(filter(None, [
+        level_map.get(constraints.level or ""),
+        play_map.get(constraints.play_type or ""),
+    ])) or "未明确"
+    scene = "、".join(filter(None, [
+        style_map.get(constraints.style or ""),
+        "、".join(constraints.raw_categories),
+    ])) or "未明确"
+    budget = constraints.raw_budget or "未明确"
+    risks = [physical_map.get(key, key) for key in constraints.physical]
+    avoid = []
+    if constraints.level == "beginner" or constraints.physical.get("wrist_sensitive"):
+        avoid.extend(["3U极头重", "特硬中杆", "高磅"])
+    if constraints.style == "defense":
+        avoid.append("极端头重慢速拍")
+
+    lines = [
+        f"用户画像：{profile}",
+        f"打法场景：{scene}",
+        f"核心需求：预算{budget}；{normalized}",
+        f"风险约束：{'、'.join(risks) if risks else '未明确'}",
+        f"检索关键词：{' '.join(dict.fromkeys([*model_tokens, *keywords[:12]]))}",
+        f"不应推荐：{'、'.join(dict.fromkeys(avoid)) if avoid else '未明确'}",
+    ]
+    rewritten = normalize_text("\n".join(lines))
+    if len(rewritten) > QUERY_REWRITE_MAX_CHARS:
+        rewritten = rewritten[:QUERY_REWRITE_MAX_CHARS].rstrip()
+    return rewritten
+
+
 def _last_user_message(history: Optional[Sequence]) -> str:
     for item in reversed(history or []):
         role = item.get("role") if isinstance(item, dict) else getattr(item, "role", None)
@@ -329,7 +379,7 @@ def analyze_query(question: str, history: Optional[Sequence] = None) -> QueryAna
     ):
         contextual_query = normalize_text(f"{previous_user_message} {normalized}")
 
-    expanded_query = _expand_query(contextual_query)
+    expanded_query = rewrite_query_for_retrieval(contextual_query, history) if QUERY_REWRITE_ENABLED else _expand_query(contextual_query)
     queries = [normalized]
     if expanded_query and expanded_query != normalized:
         queries.append(expanded_query)

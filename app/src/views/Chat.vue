@@ -72,6 +72,26 @@
               <MarkdownView v-else :content="m.content" />
             </div>
 
+            <div v-if="m.role === 'assistant' && m.sources?.length" class="source-panel">
+              <div class="source-panel-head">
+                <span>参考资料</span>
+                <b>{{ m.sources.length }} 份命中来源</b>
+              </div>
+              <div class="source-list">
+                <div v-for="source in m.sources.slice(0, 4)" :key="source.ref + source.file_name + source.section_title" class="source-item">
+                  <div>
+                    <strong>{{ source.section_title || source.file_name || source.ref }}</strong>
+                    <small>{{ source.file_name || '知识库资料' }}</small>
+                  </div>
+                  <div class="source-meta">
+                    <span v-if="source.source_confidence">可信度 {{ source.source_confidence }}</span>
+                    <span v-if="source.score">相关 {{ formatSourceScore(source.score) }}</span>
+                    <span v-if="source.unverified_fields?.length" class="source-risk">待核验 {{ source.unverified_fields.join('、') }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div v-if="m.role === 'assistant' && m.products?.length" class="reco-panel">
               <div class="reco-panel-head">
                 <span>推荐装备</span>
@@ -233,8 +253,6 @@ let streamRafId = null
 function flushDelta() {
   streamRafId = null
   if (!deltaBuffer) return
-  // 🔍 诊断：每次 rAF 刷出打日志
-  console.log(`[flushDelta] flushing len=${deltaBuffer.length} streamingText_before=${streamingText.value.length}`)
   streamingText.value += deltaBuffer
   const msg = messages.value.find((item) => item.id === streamState.aiId)
   if (msg) msg.content += deltaBuffer
@@ -244,8 +262,6 @@ function flushDelta() {
 
 function appendDelta(delta) {
   if (!delta) return
-  // 🔍 诊断：每次 appendDelta 调用打日志
-  console.log(`[appendDelta] len=${delta.length} buffer_before=${deltaBuffer.length}`)
   deltaBuffer += delta
   // 已有待执行的帧回调则只攒数据，不重复调度（同帧内多个 delta 合并一次渲染）
   if (streamRafId) return
@@ -259,75 +275,6 @@ function flushStreamBuffer() {
     streamRafId = null
   }
   flushDelta()
-}
-
-// ── 推荐卡片过滤：只保留 AI 回答文本中实际提到的产品 ──
-// 后端推荐引擎独立返回产品列表（可能跨品类/数量多于文本中提到的），
-// 这里用文本匹配做交集，确保"AI 推荐几个就显示几张卡片"。
-const BRAND_ALIASES = {
-  '李宁': ['LI-NING', 'Lining', 'lining'], 'LI-NING': ['李宁', 'Lining', 'lining'],
-  '威克多': ['VICTOR', 'Victor', '胜利'], 'VICTOR': ['威克多', 'Victor', '胜利'],
-  '尤尼克斯': ['YONEX', 'Yonex', 'yy'], 'YONEX': ['尤尼克斯', 'Yonex'],
-  '川崎': ['KAWASAKI', 'Kawasaki'], 'KAWASAKI': ['川崎'],
-}
-
-function buildSearchTerms(product) {
-  const terms = []
-  const name = (product.title || product.name || '')
-  const brand = (product.brand || '')
-
-  // 完整名称
-  if (name) terms.push(name.toLowerCase())
-
-  // 名称中的型号部分（通常在空格/横线后的关键词）
-  // 如 "Li-NING 战戟 6000" → 提取 "战戟 6000", "6000", "战戟"
-  const parts = name.split(/[\s\-·_]+/).filter(Boolean)
-  if (parts.length >= 2) {
-    // 品牌后+型号：如 "战戟 6000", "极速 JS-12"
-    terms.push(parts.slice(1).join(' ').toLowerCase())
-    // 纯型号数字/字母：如 "6000", "JS-12"
-    const lastPart = parts[parts.length - 1]
-    if (/\d/.test(lastPart) || /[A-Z]{2,}/i.test(lastPart)) {
-      terms.push(lastPart.toLowerCase())
-    }
-  }
-  // 单词级别的型号（如 "BG80", "BG65", "JS-12"）
-  for (const p of parts) {
-    if (/[A-Z0-9]{2,}/i.test(p) && p.length >= 2) {
-      terms.push(p.toLowerCase())
-    }
-  }
-
-  // 品牌 + 型号组合
-  if (brand && parts.length >= 1) {
-    for (const alias of [...BRAND_ALIASES[brand] || [], brand]) {
-      if (parts.length >= 2) {
-        terms.push((alias + ' ' + parts.slice(-1)[0]).toLowerCase())
-      }
-      terms.push(alias.toLowerCase())
-    }
-  }
-
-  return [...new Set(terms)]
-}
-
-function filterProductsByAnswer(products, answerText) {
-  if (!products || !products.length || !answerText) return []
-  const text = answerText.toLowerCase()
-
-  return products.filter((p) => {
-    const terms = buildSearchTerms(p)
-    // 任一搜索词在文本中出现 → 该产品被 AI 提到
-    for (const term of terms) {
-      if (!term) continue
-      // 短词（≥3 字符）精确匹配，避免 "BG6" 匹配到 "BG65"
-      if (term.length >= 4 && text.includes(term)) return true
-      if (term.length >= 2 && /^[A-Z0-9]+$/i.test(term) && text.includes(term)) return true
-      // 中文词 ≥2 字符
-      if (/[\u4e00-\u9fff]/.test(term) && term.length >= 2 && text.includes(term)) return true
-    }
-    return false
-  })
 }
 
 // 持久化做防抖，避免流式每条增量都写 localStorage 造成主线程卡顿
@@ -367,8 +314,13 @@ function retryLast() {
   }
 }
 
+function formatSourceScore(score) {
+  const value = Number(score)
+  if (!Number.isFinite(value)) return '--'
+  return value > 1 ? value.toFixed(1) : value.toFixed(2)
+}
+
 async function askNow(preset) {
-  console.log('[Chat v5] askNow 触发 — 如果看到此条说明已加载最新版代码')
   const text = String(preset ?? inputText.value ?? '').trim()
   if (!text || loading.value) return
 
@@ -411,6 +363,10 @@ async function askNow(preset) {
     onContent: (delta) => {
       appendDelta(delta || '')
     },
+    onSources: (sources) => {
+      const msg = messages.value.find((item) => item.id === streamState.aiId)
+      if (msg) msg.sources = sources || []
+    },
     onDone: (payload) => {
       // 先刷空缓冲区（确保最后一个 rAF 帧的增量不丢失）
       flushStreamBuffer()
@@ -422,18 +378,10 @@ async function askNow(preset) {
           msg.content = payload.answer
         }
         msg.sources = payload.sources || []
-        const allProducts = payload.recommended_products || []
-        const answerText = msg.content || payload.answer || ''
-        // 过滤：只保留 AI 回答文本中实际提到的产品，确保"推荐几个显示几个"
-        const filtered = filterProductsByAnswer(allProducts, answerText)
-        // 兜底：如果过滤后一个都没匹配上（可能是匹配逻辑遗漏），保留原始列表
-        msg.products = filtered.length > 0 ? filtered : allProducts
-        console.log('[Chat] onDone: raw=', allProducts.length, 'filtered=', filtered.length,
-          'answer_len=', answerText.length,
-          filtered.length > 0 ? '✅ 文本匹配过滤' : '⚠️ 全量兜底（无匹配）')
+        msg.products = payload.recommended_products || []
       }
       loading.value = false
-      scrollToBottom(true)
+      // 推荐卡在 done 后挂载，但不强制把视角拉到商品卡；让用户自己继续下滑查看。
       schedulePersist(0)
     },
     onError: (err) => {
@@ -822,6 +770,90 @@ onBeforeUnmount(() => {
   box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
 }
 
+.source-panel {
+  max-width: 820px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(203, 213, 225, 0.62);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(16px);
+}
+
+.source-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.source-panel-head span {
+  color: #0f698a;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.source-panel-head b {
+  color: #5b6c81;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.source-list {
+  display: grid;
+  gap: 7px;
+}
+
+.source-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(248, 251, 255, 0.86);
+}
+
+.source-item strong,
+.source-item small {
+  display: block;
+}
+
+.source-item strong {
+  color: #172235;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.source-item small {
+  margin-top: 2px;
+  color: #8090a3;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.source-meta span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #355065;
+  background: rgba(226, 232, 240, 0.75);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.source-meta .source-risk {
+  color: #92400e;
+  background: rgba(254, 243, 199, 0.86);
+}
+
 .reco-panel-head span,
 .reco-panel-head b {
   display: block;
@@ -967,6 +999,7 @@ onBeforeUnmount(() => {
 
   .message-bubble--user,
   .message-bubble,
+  .source-panel,
   .reco-panel {
     max-width: 100%;
   }

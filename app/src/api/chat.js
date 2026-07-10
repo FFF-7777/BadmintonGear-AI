@@ -190,6 +190,10 @@ function mapProduct(p) {
     tags: [...(Array.isArray(p.tags) ? p.tags : []), ...(Array.isArray(p.manual_tags) ? p.manual_tags : [])].filter(Boolean),
     image: p.image || specs.image || '',
     score: p.score,
+    confidence: p.confidence || '',
+    sourceConfidence: p.source_confidence || '',
+    recommendationRole: p.recommendation_role || '',
+    risk: Array.isArray(p.risk) ? p.risk : [],
     raw: p,
   }
 }
@@ -223,8 +227,6 @@ export function chatStream(message, sessionId, handlers = {}) {
 
   let settled = false
   let authenticated = false
-  let contentCount = 0 // 🔍 诊断：统计 content 消息总数
-
   const done = (fn) => {
     if (settled) return
     settled = true
@@ -264,9 +266,6 @@ export function chatStream(message, sessionId, handlers = {}) {
         break
       case 'content':
         const c = data.content || ''
-        contentCount++ // 🔍 诊断：计数
-        // 🔍 诊断：每次收到 WS 文本增量时打日志（含时间戳和长度）
-        console.log(`[WS] #${contentCount} content delta len=${c.length} t=${Date.now()}`)
         handlers.onContent?.(c)
         break
       case 'sources':
@@ -276,11 +275,6 @@ export function chatStream(message, sessionId, handlers = {}) {
         done(() => {
           const raw = data.recommended_products || []
           const products = raw.map(mapProduct).filter(Boolean)
-          // 🔍 诊断：完整汇总
-          console.log(`[WS] done: 总 content 消息数=${contentCount}, raw products=${raw.length}, mapped=${products.length}, answer_len=${(data.answer || '').length}`)
-          if (products.length > 0) {
-            console.log('[chatStream] first product:', products[0].title, products[0].image?.slice(0, 60))
-          }
           handlers.onDone?.({
             answer: data.answer || '',
             sources: data.sources || [],
