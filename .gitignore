@@ -59,5 +59,16 @@ backups/
 # 临时调试输出
 server/_tmp_*.txt
 
+# 根目录 Excel 导出（球拍清单等，体积大，不入库）
+*.xlsx
+
+# 临时 eval token / 登录响应 / 冒烟产物
+_eval_token.txt
+黄金集/**/login*.json
+黄金集/**/smoke.json
+
+# DeepEval 本地缓存
+**/.deepeval/
+
 # Windows 保留名误创建文件
 nul

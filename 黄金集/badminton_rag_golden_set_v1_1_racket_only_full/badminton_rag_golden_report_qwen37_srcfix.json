@@ -1,0 +1,1493 @@
+{
+  "summary": {
+    "case_count": 64,
+    "overall_score": 0.8816,
+    "pass_rate_0_80": 0.7656,
+    "group_scores": {
+      "comparison": 0.8125,
+      "general_training_safety": 0.9092,
+      "grounding_policy": 0.8906,
+      "parameter": 0.8562,
+      "product_fact": 0.7775,
+      "recommendation": 0.8985,
+      "routing": 1.0
+    },
+    "weak_cases": [
+      {
+        "id": "P007",
+        "group": "parameter",
+        "score": 0.425,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "不能",
+            "必然",
+            "更好"
+          ],
+          [
+            "结合",
+            "参数",
+            "需求"
+          ],
+          [
+            "官方",
+            "来源"
+          ]
+        ],
+        "answer_chars": 289,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "P008",
+        "group": "parameter",
+        "score": 0.425,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "上限",
+            "不等于",
+            "推荐"
+          ],
+          [
+            "不要",
+            "超过",
+            "官方建议"
+          ],
+          [
+            "新手",
+            "低到中等",
+            "循序渐进"
+          ]
+        ],
+        "answer_chars": 369,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC006",
+        "group": "recommendation",
+        "score": 0.7375,
+        "answer_keypoints": 0.75,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 0.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "轻量",
+            "大甜区",
+            "好上手"
+          ]
+        ],
+        "answer_chars": 1117,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC008",
+        "group": "recommendation",
+        "score": 0.775,
+        "answer_keypoints": 0.75,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "舒适",
+            "低负担",
+            "降低磅数"
+          ]
+        ],
+        "answer_chars": 1239,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC009",
+        "group": "recommendation",
+        "score": 0.7,
+        "answer_keypoints": 1.0,
+        "forbidden_content": 0.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [
+          "最强"
+        ],
+        "missing_keypoint_groups": [],
+        "answer_chars": 1043,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP003",
+        "group": "comparison",
+        "score": 0.75,
+        "answer_keypoints": 1.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [],
+        "answer_chars": 262,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP004",
+        "group": "comparison",
+        "score": 0.7,
+        "answer_keypoints": 0.4,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "参数摘要",
+            "待核验",
+            "中低"
+          ],
+          [
+            "不能",
+            "编造",
+            "确定差异"
+          ],
+          [
+            "来源",
+            "核验"
+          ]
+        ],
+        "answer_chars": 1940,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP007",
+        "group": "comparison",
+        "score": 0.65,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "不是",
+            "只看重量"
+          ]
+        ],
+        "answer_chars": 1480,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP008",
+        "group": "comparison",
+        "score": 0.7,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "不能",
+            "只看单一参数"
+          ]
+        ],
+        "answer_chars": 1376,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP009",
+        "group": "comparison",
+        "score": 0.75,
+        "answer_keypoints": 1.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [],
+        "answer_chars": 2019,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP010",
+        "group": "comparison",
+        "score": 0.7,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "型号差异",
+            "待核验",
+            "不要编造"
+          ]
+        ],
+        "answer_chars": 1641,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G006",
+        "group": "general_training_safety",
+        "score": 0.7,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "不鼓励",
+            "高强度",
+            "突击"
+          ]
+        ],
+        "answer_chars": 1001,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G009",
+        "group": "general_training_safety",
+        "score": 0.6167,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 0.3333,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "动态",
+            "循序"
+          ],
+          [
+            "身体状态",
+            "安全"
+          ]
+        ],
+        "answer_chars": 132,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "U008",
+        "group": "grounding_policy",
+        "score": 0.75,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "型号对比",
+            "逐条规格"
+          ],
+          [
+            "series",
+            "product"
+          ]
+        ],
+        "answer_chars": 859,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "F002",
+        "group": "product_fact",
+        "score": 0.625,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "参数摘要",
+            "待核验"
+          ],
+          [
+            "来源",
+            "核验"
+          ]
+        ],
+        "answer_chars": 1002,
+        "ok": true,
+        "status_code": 200
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "R001",
+      "group": "routing",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 102,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R002",
+      "group": "routing",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 101,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R003",
+      "group": "routing",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 103,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R004",
+      "group": "routing",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 73,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R005",
+      "group": "routing",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1277,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R006",
+      "group": "routing",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1190,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P001",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1875,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P002",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1345,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P003",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1302,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P004",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1253,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P005",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1389,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P006",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1032,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P007",
+      "group": "parameter",
+      "score": 0.425,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不能",
+          "必然",
+          "更好"
+        ],
+        [
+          "结合",
+          "参数",
+          "需求"
+        ],
+        [
+          "官方",
+          "来源"
+        ]
+      ],
+      "answer_chars": 289,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P008",
+      "group": "parameter",
+      "score": 0.425,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "上限",
+          "不等于",
+          "推荐"
+        ],
+        [
+          "不要",
+          "超过",
+          "官方建议"
+        ],
+        [
+          "新手",
+          "低到中等",
+          "循序渐进"
+        ]
+      ],
+      "answer_chars": 369,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC001",
+      "group": "recommendation",
+      "score": 0.9,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1765,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC002",
+      "group": "recommendation",
+      "score": 0.85,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1563,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC003",
+      "group": "recommendation",
+      "score": 0.95,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1585,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC004",
+      "group": "recommendation",
+      "score": 0.9,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不建议",
+          "极端头重"
+        ]
+      ],
+      "answer_chars": 1609,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC005",
+      "group": "recommendation",
+      "score": 0.85,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1294,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC006",
+      "group": "recommendation",
+      "score": 0.7375,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 0.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "轻量",
+          "大甜区",
+          "好上手"
+        ]
+      ],
+      "answer_chars": 1117,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC007",
+      "group": "recommendation",
+      "score": 0.9,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不只看",
+          "名气"
+        ]
+      ],
+      "answer_chars": 1382,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC008",
+      "group": "recommendation",
+      "score": 0.775,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "舒适",
+          "低负担",
+          "降低磅数"
+        ]
+      ],
+      "answer_chars": 1239,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC009",
+      "group": "recommendation",
+      "score": 0.7,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 0.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [
+        "最强"
+      ],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1043,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC010",
+      "group": "recommendation",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1664,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC011",
+      "group": "recommendation",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1415,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC012",
+      "group": "recommendation",
+      "score": 0.85,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1105,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC013",
+      "group": "recommendation",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1563,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC014",
+      "group": "recommendation",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1674,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP001",
+      "group": "comparison",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 2015,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP002",
+      "group": "comparison",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1969,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP003",
+      "group": "comparison",
+      "score": 0.75,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 262,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP004",
+      "group": "comparison",
+      "score": 0.7,
+      "answer_keypoints": 0.4,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "参数摘要",
+          "待核验",
+          "中低"
+        ],
+        [
+          "不能",
+          "编造",
+          "确定差异"
+        ],
+        [
+          "来源",
+          "核验"
+        ]
+      ],
+      "answer_chars": 1940,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP005",
+      "group": "comparison",
+      "score": 0.85,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "进阶",
+          "高级"
+        ]
+      ],
+      "answer_chars": 1602,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP006",
+      "group": "comparison",
+      "score": 0.85,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不能",
+          "混用",
+          "一概而论"
+        ]
+      ],
+      "answer_chars": 1539,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP007",
+      "group": "comparison",
+      "score": 0.65,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不是",
+          "只看重量"
+        ]
+      ],
+      "answer_chars": 1480,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP008",
+      "group": "comparison",
+      "score": 0.7,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不能",
+          "只看单一参数"
+        ]
+      ],
+      "answer_chars": 1376,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP009",
+      "group": "comparison",
+      "score": 0.75,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 2019,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP010",
+      "group": "comparison",
+      "score": 0.7,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "型号差异",
+          "待核验",
+          "不要编造"
+        ]
+      ],
+      "answer_chars": 1641,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP011",
+      "group": "comparison",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 2022,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP012",
+      "group": "comparison",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1938,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G001",
+      "group": "general_training_safety",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1414,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G002",
+      "group": "general_training_safety",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1007,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G003",
+      "group": "general_training_safety",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1065,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G004",
+      "group": "general_training_safety",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1444,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G005",
+      "group": "general_training_safety",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 939,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G006",
+      "group": "general_training_safety",
+      "score": 0.7,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不鼓励",
+          "高强度",
+          "突击"
+        ]
+      ],
+      "answer_chars": 1001,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G007",
+      "group": "general_training_safety",
+      "score": 0.9,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "循序渐进"
+        ]
+      ],
+      "answer_chars": 1937,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G008",
+      "group": "general_training_safety",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 855,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G009",
+      "group": "general_training_safety",
+      "score": 0.6167,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "动态",
+          "循序"
+        ],
+        [
+          "身体状态",
+          "安全"
+        ]
+      ],
+      "answer_chars": 132,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G010",
+      "group": "general_training_safety",
+      "score": 0.875,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "场景",
+          "区别"
+        ]
+      ],
+      "answer_chars": 1872,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U001",
+      "group": "grounding_policy",
+      "score": 0.875,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "只能",
+          "参数方向",
+          "建议核验"
+        ]
+      ],
+      "answer_chars": 2063,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U002",
+      "group": "grounding_policy",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 103,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U003",
+      "group": "grounding_policy",
+      "score": 0.875,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不强行",
+          "唯一答案"
+        ]
+      ],
+      "answer_chars": 578,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U004",
+      "group": "grounding_policy",
+      "score": 0.875,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "体验倾向",
+          "线索"
+        ]
+      ],
+      "answer_chars": 1208,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U005",
+      "group": "grounding_policy",
+      "score": 0.875,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "参数方向"
+        ]
+      ],
+      "answer_chars": 379,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U006",
+      "group": "grounding_policy",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 136,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U007",
+      "group": "grounding_policy",
+      "score": 0.875,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不作",
+          "确定规格"
+        ]
+      ],
+      "answer_chars": 1365,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U008",
+      "group": "grounding_policy",
+      "score": 0.75,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "型号对比",
+          "逐条规格"
+        ],
+        [
+          "series",
+          "product"
+        ]
+      ],
+      "answer_chars": 859,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F001",
+      "group": "product_fact",
+      "score": 0.8875,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "参数摘要",
+          "待核验",
+          "核验"
+        ]
+      ],
+      "answer_chars": 858,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F002",
+      "group": "product_fact",
+      "score": 0.625,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "参数摘要",
+          "待核验"
+        ],
+        [
+          "来源",
+          "核验"
+        ]
+      ],
+      "answer_chars": 1002,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F003",
+      "group": "product_fact",
+      "score": 0.82,
+      "answer_keypoints": 0.6,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "参数摘要",
+          "待核验"
+        ],
+        [
+          "source_confidence",
+          "中低"
+        ]
+      ],
+      "answer_chars": 1612,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F004",
+      "group": "recommendation",
+      "score": 0.9625,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 0.25,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1965,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F005",
+      "group": "recommendation",
+      "score": 0.95,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 971,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F006",
+      "group": "recommendation",
+      "score": 0.95,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1463,
+      "ok": true,
+      "status_code": 200
+    }
+  ]
+}

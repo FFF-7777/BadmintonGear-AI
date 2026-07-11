@@ -12,6 +12,8 @@ import re
 from functools import partial
 from typing import List, Optional, AsyncGenerator, Sequence
 
+from .output_guard import sanitize_superlative
+
 logger = logging.getLogger(__name__)
 
 
@@ -952,7 +954,7 @@ class AIService:
                 ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
                 return {
                     "session_id": session_id,
-                    "answer": answer,
+                    "answer": sanitize_superlative(answer),
                     "messages": [user_msg, ai_msg],
                     "sources": [],
                     "recommended_products": [],
@@ -968,7 +970,7 @@ class AIService:
                 ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
                 return {
                     "session_id": session_id,
-                    "answer": answer,
+                    "answer": sanitize_superlative(answer),
                     "messages": [user_msg, ai_msg],
                     "sources": [],
                     "recommended_products": [],
@@ -984,7 +986,7 @@ class AIService:
                 ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
                 return {
                     "session_id": session_id,
-                    "answer": answer,
+                    "answer": sanitize_superlative(answer),
                     "messages": [user_msg, ai_msg],
                     "sources": [],
                     "recommended_products": [],
@@ -1037,7 +1039,7 @@ class AIService:
             ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
             return {
                 "session_id": session_id,
-                "answer": answer,
+                "answer": sanitize_superlative(answer),
                 "messages": [user_msg, ai_msg],
                 "sources": sources,
                 "recommended_products": recommended,
@@ -1085,7 +1087,7 @@ class AIService:
                 ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
                 yield json.dumps({
                     "type": "done",
-                    "answer": answer,
+                    "answer": sanitize_superlative(answer),
                     "sources": [],
                     "recommended_products": [],
                 }, ensure_ascii=False)
@@ -1107,7 +1109,7 @@ class AIService:
                 ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
                 yield json.dumps({
                     "type": "done",
-                    "answer": answer,
+                    "answer": sanitize_superlative(answer),
                     "sources": [],
                     "recommended_products": [],
                 }, ensure_ascii=False)
@@ -1129,7 +1131,7 @@ class AIService:
                 ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
                 yield json.dumps({
                     "type": "done",
-                    "answer": answer,
+                    "answer": sanitize_superlative(answer),
                     "sources": [],
                     "recommended_products": [],
                 }, ensure_ascii=False)
@@ -1213,7 +1215,7 @@ class AIService:
             yield json.dumps(
                 {
                     "type": "done",
-                    "answer": full_answer,
+                    "answer": sanitize_superlative(full_answer),
                     "sources": sources,
                     "recommended_products": recommended,
                 },

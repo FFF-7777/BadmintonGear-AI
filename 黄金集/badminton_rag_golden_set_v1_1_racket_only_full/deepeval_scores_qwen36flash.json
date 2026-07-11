@@ -1,0 +1,15 @@
+{
+  "framework": "deepeval",
+  "deepeval_version": "4.0.8",
+  "judge_model": "qwen3.6-flash-2026-04-16",
+  "judge_endpoint": "https://llm-e7ls8vvabw7yp9a4.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+  "n_cases": 64,
+  "metrics": {
+    "Faithfulness": 0.996,
+    "Answer Relevancy": 0.82,
+    "Contextual Precision": 0.7726,
+    "Contextual Recall": 0.2,
+    "Hallucination": 0.0111,
+    "专业度 [GEval]": 0.7133
+  }
+}

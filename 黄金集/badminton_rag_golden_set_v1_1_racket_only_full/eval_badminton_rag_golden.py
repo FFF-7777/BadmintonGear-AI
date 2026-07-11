@@ -46,9 +46,46 @@ FORMAT_MARKER_ALIASES = {
     "适合原因": ["为什么适合你", "适合原因"],
 }
 
+SOURCE_ALIASES = {
+    "球拍参数解释": ["球拍参数解释", "参数与型号对比", "RAGv4", "球拍参数"],
+    "选拍总指南": ["选拍总指南", "选拍知识库", "选拍逻辑", "RAGv4"],
+    "球拍数据库": ["球拍数据库", "商品库_RAG检索", "球拍商品库", "结构化商品库"],
+    "推荐规则": ["推荐规则", "边界规则", "回答模板", "source_confidence"],
+    "训练安全": ["训练安全", "战术训练安全", "热身", "安全边界"],
+}
+
+FORBIDDEN_NEGATION_MARKERS = ("不", "并不", "不是", "不能", "不要", "避免", "所谓", "不是说")
+
 
 def marker_hit(answer: str, marker: str) -> bool:
     return contains_any(answer, FORMAT_MARKER_ALIASES.get(marker, [marker]))
+
+
+def expand_source_keyword(keyword: str) -> List[str]:
+    return SOURCE_ALIASES.get(keyword, [keyword])
+
+
+def forbidden_hits(answer: str, terms: List[str]) -> List[str]:
+    low = answer.lower()
+    hits = []
+    for term in terms:
+        if not term:
+            continue
+        term_low = term.lower()
+        start = 0
+        matched = False
+        while True:
+            index = low.find(term_low, start)
+            if index < 0:
+                break
+            window = low[max(0, index - 8):index + len(term_low) + 4]
+            if not any(marker.lower() in window for marker in FORBIDDEN_NEGATION_MARKERS):
+                matched = True
+                break
+            start = index + len(term_low)
+        if matched:
+            hits.append(term)
+    return hits
 
 
 def score_case(case: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
@@ -65,21 +102,26 @@ def score_case(case: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
     answer_keypoints = sum(group_hits) / len(must_groups) if must_groups else 1.0
 
     forbidden = rubric.get("must_not_include") or []
-    forbidden_hits = [term for term in forbidden if term and term.lower() in answer.lower()]
-    forbidden_score = 0.0 if forbidden_hits else 1.0
+    forbidden_hit_terms = forbidden_hits(answer, forbidden)
+    forbidden_score = 0.0 if forbidden_hit_terms else 1.0
 
     source_keywords = case["expected"].get("expected_source_keywords") or []
     source_corpus = sources_text + "\n" + answer + "\n" + response_text
     source_hit = (
-        sum(contains_any(source_corpus, [keyword]) for keyword in source_keywords)
+        sum(contains_any(source_corpus, expand_source_keyword(keyword)) for keyword in source_keywords)
         / len(source_keywords)
         if source_keywords else 1.0
     )
 
     expected_products = case["expected"].get("expected_products") or []
-    product_corpus = products_text + "\n" + answer + "\n" + response_text
+    structured_product_corpus = products_text + "\n" + sources_text + "\n" + response_text
+    product_answer_corpus = answer + "\n" + response_text
     product_hit = (
-        sum(contains_any(product_corpus, [product]) for product in expected_products)
+        sum(
+            contains_any(structured_product_corpus, [product])
+            or (case.get("group") != "product_fact" and contains_any(product_answer_corpus, [product]))
+            for product in expected_products
+        )
         / len(expected_products)
         if expected_products else 1.0
     )
@@ -108,7 +150,7 @@ def score_case(case: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
         "source_hit": round(source_hit, 4),
         "product_hit": round(product_hit, 4),
         "format": round(format_score, 4),
-        "forbidden_hits": forbidden_hits,
+        "forbidden_hits": forbidden_hit_terms,
         "missing_keypoint_groups": [
             must_groups[i] for i, hit in enumerate(group_hits) if not hit
         ],

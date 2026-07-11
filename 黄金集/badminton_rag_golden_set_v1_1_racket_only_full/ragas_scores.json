@@ -1,0 +1,14 @@
+{
+  "framework": "ragas",
+  "ragas_version": "0.4.3",
+  "judge_model": "qwen3.6-flash-2026-04-16",
+  "judge_endpoint": "https://llm-e7ls8vvabw7yp9a4.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+  "n_cases": 2,
+  "metrics": {
+    "faithfulness": null,
+    "answer_relevancy": null,
+    "context_precision": null,
+    "context_recall": null,
+    "answer_correctness": null
+  }
+}

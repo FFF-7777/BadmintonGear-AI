@@ -1,0 +1,2828 @@
+{
+  "summary": {
+    "case_count": 64,
+    "overall_score": 0.6427,
+    "pass_rate_0_80": 0.3125,
+    "group_scores": {
+      "comparison": 0.5667,
+      "general_training_safety": 0.6242,
+      "grounding_policy": 0.525,
+      "parameter": 0.8656,
+      "product_fact": 0.4833,
+      "recommendation": 0.6451,
+      "routing": 0.7583
+    },
+    "weak_cases": [
+      {
+        "id": "R001",
+        "group": "routing",
+        "score": 0.55,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "可以",
+            "帮助",
+            "建议"
+          ]
+        ],
+        "answer_chars": 93,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "P007",
+        "group": "parameter",
+        "score": 0.55,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "不能",
+            "必然",
+            "更好"
+          ],
+          [
+            "官方",
+            "来源"
+          ]
+        ],
+        "answer_chars": 205,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "P008",
+        "group": "parameter",
+        "score": 0.675,
+        "answer_keypoints": 0.75,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "不要",
+            "超过",
+            "官方建议"
+          ]
+        ],
+        "answer_chars": 258,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC002",
+        "group": "recommendation",
+        "score": 0.75,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "均衡",
+            "微头重",
+            "略头重"
+          ]
+        ],
+        "answer_chars": 933,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC003",
+        "group": "recommendation",
+        "score": 0.75,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "防守",
+            "连续",
+            "代价"
+          ]
+        ],
+        "answer_chars": 867,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC004",
+        "group": "recommendation",
+        "score": 0.65,
+        "answer_keypoints": 0.6,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "挥速",
+            "启动",
+            "连贯"
+          ],
+          [
+            "封网",
+            "平抽挡",
+            "防守"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC006",
+        "group": "recommendation",
+        "score": 0.4375,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 0.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "儿童",
+            "孩子"
+          ],
+          [
+            "轻量",
+            "大甜区",
+            "好上手"
+          ],
+          [
+            "价格",
+            "参考",
+            "非实时"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC007",
+        "group": "recommendation",
+        "score": 0.65,
+        "answer_keypoints": 0.6,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "正规渠道",
+            "线磅"
+          ],
+          [
+            "不只看",
+            "名气"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC008",
+        "group": "recommendation",
+        "score": 0.425,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 0.25,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "不能",
+            "治疗",
+            "诊断"
+          ],
+          [
+            "手腕",
+            "不适"
+          ],
+          [
+            "医生",
+            "专业人士"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC009",
+        "group": "recommendation",
+        "score": 0.475,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "杀球",
+            "进攻"
+          ],
+          [
+            "头重",
+            "偏硬",
+            "3U",
+            "4U"
+          ],
+          [
+            "代价",
+            "防守",
+            "连续"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC011",
+        "group": "recommendation",
+        "score": 0.55,
+        "answer_keypoints": 0.4,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "4U",
+            "5U"
+          ],
+          [
+            "均衡",
+            "略头轻",
+            "头轻"
+          ],
+          [
+            "中杆",
+            "适中",
+            "偏软"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC012",
+        "group": "recommendation",
+        "score": 0.4,
+        "answer_keypoints": 0.2,
+        "forbidden_content": 1.0,
+        "source_hit": 0.25,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "5U",
+            "轻拍"
+          ],
+          [
+            "4U",
+            "均衡",
+            "微头重"
+          ],
+          [
+            "杀球",
+            "后场",
+            "借力"
+          ],
+          [
+            "疲劳",
+            "负担"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC013",
+        "group": "recommendation",
+        "score": 0.55,
+        "answer_keypoints": 0.4,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "双打",
+            "后场"
+          ],
+          [
+            "略头重",
+            "头重"
+          ],
+          [
+            "连续",
+            "下压",
+            "连贯"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "REC014",
+        "group": "recommendation",
+        "score": 0.75,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "容错",
+            "舒适"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP001",
+        "group": "comparison",
+        "score": 0.7667,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.3333,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "Medium",
+            "中等"
+          ]
+        ],
+        "answer_chars": 1020,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP002",
+        "group": "comparison",
+        "score": 0.6,
+        "answer_keypoints": 0.6,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "速度",
+            "轻量",
+            "防守"
+          ],
+          [
+            "双打",
+            "平抽挡"
+          ]
+        ],
+        "answer_chars": 1003,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP003",
+        "group": "comparison",
+        "score": 0.5,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "Pro",
+            "Tour",
+            "Game",
+            "Play"
+          ],
+          [
+            "不能",
+            "只按",
+            "贵"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP005",
+        "group": "comparison",
+        "score": 0.6167,
+        "answer_keypoints": 0.6,
+        "forbidden_content": 1.0,
+        "source_hit": 0.3333,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "TURBOCHARGING N7",
+            "N7"
+          ],
+          [
+            "进阶",
+            "高级"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP006",
+        "group": "comparison",
+        "score": 0.4167,
+        "answer_keypoints": 0.2,
+        "forbidden_content": 1.0,
+        "source_hit": 0.3333,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "羽航员",
+            "儿童"
+          ],
+          [
+            "长度",
+            "重量",
+            "握柄",
+            "力量"
+          ],
+          [
+            "孩子",
+            "量身",
+            "轻量"
+          ],
+          [
+            "不能",
+            "混用",
+            "一概而论"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP007",
+        "group": "comparison",
+        "score": 0.45,
+        "answer_keypoints": 0.4,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "头重",
+            "杀球",
+            "后场"
+          ],
+          [
+            "取舍",
+            "连续",
+            "负担"
+          ],
+          [
+            "不是",
+            "只看重量"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP008",
+        "group": "comparison",
+        "score": 0.45,
+        "answer_keypoints": 0.4,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "硬中杆",
+            "软中杆"
+          ],
+          [
+            "借力",
+            "甜区",
+            "反馈"
+          ],
+          [
+            "不能",
+            "只看单一参数"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP009",
+        "group": "comparison",
+        "score": 0.5,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "双打",
+            "防守",
+            "平抽挡",
+            "封网"
+          ],
+          [
+            "连续",
+            "体能",
+            "取舍"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP011",
+        "group": "comparison",
+        "score": 0.5167,
+        "answer_keypoints": 0.4,
+        "forbidden_content": 1.0,
+        "source_hit": 0.3333,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "DriveX 12"
+          ],
+          [
+            "ASTROX 99 PRO"
+          ],
+          [
+            "不默认",
+            "谨慎"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "CMP012",
+        "group": "comparison",
+        "score": 0.3167,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.3333,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "NANOFLARE 700 PRO"
+          ],
+          [
+            "速度",
+            "轻量",
+            "防守"
+          ],
+          [
+            "后场",
+            "重杀"
+          ],
+          [
+            "头重",
+            "力量"
+          ],
+          [
+            "牺牲",
+            "厚度",
+            "下压"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G001",
+        "group": "general_training_safety",
+        "score": 0.75,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "2027",
+            "01",
+            "04"
+          ],
+          [
+            "21分",
+            "过渡期",
+            "赛事"
+          ]
+        ],
+        "answer_chars": 752,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G002",
+        "group": "general_training_safety",
+        "score": 0.5,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "回中"
+          ],
+          [
+            "击球后"
+          ],
+          [
+            "准备位置",
+            "合理位置"
+          ],
+          [
+            "下一拍",
+            "移动"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G003",
+        "group": "general_training_safety",
+        "score": 0.625,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "六点"
+          ],
+          [
+            "启动",
+            "路线",
+            "稳定",
+            "回中"
+          ],
+          [
+            "膝踝",
+            "伤"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G004",
+        "group": "general_training_safety",
+        "score": 0.625,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "发接发",
+            "前三拍"
+          ],
+          [
+            "抢高点",
+            "压低",
+            "封网"
+          ],
+          [
+            "连贯",
+            "轮转"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G005",
+        "group": "general_training_safety",
+        "score": 0.75,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "崴脚",
+            "肿"
+          ],
+          [
+            "不能",
+            "诊断"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G006",
+        "group": "general_training_safety",
+        "score": 0.3,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "膝盖",
+            "疼"
+          ],
+          [
+            "装备",
+            "不能",
+            "治疗"
+          ],
+          [
+            "降低",
+            "负担"
+          ],
+          [
+            "医生",
+            "专业人士"
+          ],
+          [
+            "不鼓励",
+            "高强度",
+            "突击"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G007",
+        "group": "general_training_safety",
+        "score": 0.7,
+        "answer_keypoints": 0.4,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "热身",
+            "步法",
+            "基本动作"
+          ],
+          [
+            "循序渐进"
+          ],
+          [
+            "安全",
+            "疼痛"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G008",
+        "group": "general_training_safety",
+        "score": 0.625,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 1.0,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "单打",
+            "拉吊"
+          ],
+          [
+            "落点",
+            "节奏",
+            "调动"
+          ],
+          [
+            "后场",
+            "网前"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "G009",
+        "group": "general_training_safety",
+        "score": 0.3667,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.3333,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "热身",
+            "拉伸"
+          ],
+          [
+            "不是",
+            "越久越好"
+          ],
+          [
+            "动态",
+            "循序"
+          ],
+          [
+            "身体状态",
+            "安全"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "U001",
+        "group": "grounding_policy",
+        "score": 0.475,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 0.25,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "不能",
+            "不应",
+            "猜"
+          ],
+          [
+            "待核验",
+            "来源"
+          ],
+          [
+            "只能",
+            "参数方向",
+            "建议核验"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "U003",
+        "group": "grounding_policy",
+        "score": 0.6,
+        "answer_keypoints": 0.5,
+        "forbidden_content": 1.0,
+        "source_hit": 0.25,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "冲突",
+            "保留",
+            "说明"
+          ],
+          [
+            "不强行",
+            "唯一答案"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "U004",
+        "group": "grounding_policy",
+        "score": 0.35,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.25,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "论坛",
+            "口碑"
+          ],
+          [
+            "体验倾向",
+            "线索"
+          ],
+          [
+            "不能",
+            "覆盖",
+            "官方参数"
+          ],
+          [
+            "来源",
+            "可信度"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "U005",
+        "group": "grounding_policy",
+        "score": 0.475,
+        "answer_keypoints": 0.25,
+        "forbidden_content": 1.0,
+        "source_hit": 0.25,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "候选装备",
+            "商品库"
+          ],
+          [
+            "知识资料",
+            "解释"
+          ],
+          [
+            "参数方向"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "U007",
+        "group": "grounding_policy",
+        "score": 0.35,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.25,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "中低",
+            "低"
+          ],
+          [
+            "提示",
+            "待核验"
+          ],
+          [
+            "不作",
+            "确定规格"
+          ],
+          [
+            "备选",
+            "参数方向"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "U008",
+        "group": "grounding_policy",
+        "score": 0.35,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.25,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "一支球拍",
+            "一个 chunk"
+          ],
+          [
+            "避免",
+            "混淆"
+          ],
+          [
+            "型号对比",
+            "逐条规格"
+          ],
+          [
+            "series",
+            "product"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "F001",
+        "group": "product_fact",
+        "score": 0.5,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.6667,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "羽航员",
+            "儿童",
+            "孩子"
+          ],
+          [
+            "轻量",
+            "大甜区",
+            "好上手"
+          ],
+          [
+            "参考价",
+            "非实时"
+          ],
+          [
+            "参数摘要",
+            "待核验",
+            "核验"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "F002",
+        "group": "product_fact",
+        "score": 0.45,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.3333,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "ARCSABER D11"
+          ],
+          [
+            "参数摘要",
+            "待核验"
+          ],
+          [
+            "不能",
+            "直接说",
+            "头重硬杆"
+          ],
+          [
+            "来源",
+            "核验"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "F003",
+        "group": "product_fact",
+        "score": 0.5,
+        "answer_keypoints": 0.0,
+        "forbidden_content": 1.0,
+        "source_hit": 0.6667,
+        "product_hit": 1.0,
+        "format": 1.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "ASTROX 99 LCW TOUR"
+          ],
+          [
+            "参考价",
+            "1680",
+            "非实时"
+          ],
+          [
+            "参数摘要",
+            "待核验"
+          ],
+          [
+            "source_confidence",
+            "中低"
+          ],
+          [
+            "不能",
+            "确定规格"
+          ]
+        ],
+        "answer_chars": 154,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "F005",
+        "group": "recommendation",
+        "score": 0.42,
+        "answer_keypoints": 0.2,
+        "forbidden_content": 1.0,
+        "source_hit": 0.5,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "膝盖",
+            "不舒服"
+          ],
+          [
+            "不诊断",
+            "就医",
+            "医生"
+          ],
+          [
+            "双打",
+            "4U",
+            "5U",
+            "挥速"
+          ],
+          [
+            "避免",
+            "高强度",
+            "突击",
+            "疲劳"
+          ]
+        ],
+        "answer_chars": 243,
+        "ok": true,
+        "status_code": 200
+      },
+      {
+        "id": "F006",
+        "group": "recommendation",
+        "score": 0.78,
+        "answer_keypoints": 0.8,
+        "forbidden_content": 1.0,
+        "source_hit": 0.4,
+        "product_hit": 1.0,
+        "format": 0.0,
+        "forbidden_hits": [],
+        "missing_keypoint_groups": [
+          [
+            "单打",
+            "双打",
+            "场景"
+          ]
+        ],
+        "answer_chars": 784,
+        "ok": true,
+        "status_code": 200
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "R001",
+      "group": "routing",
+      "score": 0.55,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "可以",
+          "帮助",
+          "建议"
+        ]
+      ],
+      "answer_chars": 93,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R002",
+      "group": "routing",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 101,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R003",
+      "group": "routing",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 103,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R004",
+      "group": "routing",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 73,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R005",
+      "group": "routing",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 905,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "R006",
+      "group": "routing",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 874,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P001",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 905,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P002",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 729,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P003",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1017,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P004",
+      "group": "parameter",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 487,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P005",
+      "group": "parameter",
+      "score": 0.825,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 0.75,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "结合",
+          "重量",
+          "平衡",
+          "中杆"
+        ]
+      ],
+      "answer_chars": 851,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P006",
+      "group": "parameter",
+      "score": 0.875,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "试打",
+          "感受"
+        ]
+      ],
+      "answer_chars": 730,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P007",
+      "group": "parameter",
+      "score": 0.55,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不能",
+          "必然",
+          "更好"
+        ],
+        [
+          "官方",
+          "来源"
+        ]
+      ],
+      "answer_chars": 205,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "P008",
+      "group": "parameter",
+      "score": 0.675,
+      "answer_keypoints": 0.75,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不要",
+          "超过",
+          "官方建议"
+        ]
+      ],
+      "answer_chars": 258,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC001",
+      "group": "recommendation",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1011,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC002",
+      "group": "recommendation",
+      "score": 0.75,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "均衡",
+          "微头重",
+          "略头重"
+        ]
+      ],
+      "answer_chars": 933,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC003",
+      "group": "recommendation",
+      "score": 0.75,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "防守",
+          "连续",
+          "代价"
+        ]
+      ],
+      "answer_chars": 867,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC004",
+      "group": "recommendation",
+      "score": 0.65,
+      "answer_keypoints": 0.6,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "挥速",
+          "启动",
+          "连贯"
+        ],
+        [
+          "封网",
+          "平抽挡",
+          "防守"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC005",
+      "group": "recommendation",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1228,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC006",
+      "group": "recommendation",
+      "score": 0.4375,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 0.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "儿童",
+          "孩子"
+        ],
+        [
+          "轻量",
+          "大甜区",
+          "好上手"
+        ],
+        [
+          "价格",
+          "参考",
+          "非实时"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC007",
+      "group": "recommendation",
+      "score": 0.65,
+      "answer_keypoints": 0.6,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "正规渠道",
+          "线磅"
+        ],
+        [
+          "不只看",
+          "名气"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC008",
+      "group": "recommendation",
+      "score": 0.425,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不能",
+          "治疗",
+          "诊断"
+        ],
+        [
+          "手腕",
+          "不适"
+        ],
+        [
+          "医生",
+          "专业人士"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC009",
+      "group": "recommendation",
+      "score": 0.475,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "杀球",
+          "进攻"
+        ],
+        [
+          "头重",
+          "偏硬",
+          "3U",
+          "4U"
+        ],
+        [
+          "代价",
+          "防守",
+          "连续"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC010",
+      "group": "recommendation",
+      "score": 0.85,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC011",
+      "group": "recommendation",
+      "score": 0.55,
+      "answer_keypoints": 0.4,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "4U",
+          "5U"
+        ],
+        [
+          "均衡",
+          "略头轻",
+          "头轻"
+        ],
+        [
+          "中杆",
+          "适中",
+          "偏软"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC012",
+      "group": "recommendation",
+      "score": 0.4,
+      "answer_keypoints": 0.2,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "5U",
+          "轻拍"
+        ],
+        [
+          "4U",
+          "均衡",
+          "微头重"
+        ],
+        [
+          "杀球",
+          "后场",
+          "借力"
+        ],
+        [
+          "疲劳",
+          "负担"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC013",
+      "group": "recommendation",
+      "score": 0.55,
+      "answer_keypoints": 0.4,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "双打",
+          "后场"
+        ],
+        [
+          "略头重",
+          "头重"
+        ],
+        [
+          "连续",
+          "下压",
+          "连贯"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "REC014",
+      "group": "recommendation",
+      "score": 0.75,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "容错",
+          "舒适"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP001",
+      "group": "comparison",
+      "score": 0.7667,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "Medium",
+          "中等"
+        ]
+      ],
+      "answer_chars": 1020,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP002",
+      "group": "comparison",
+      "score": 0.6,
+      "answer_keypoints": 0.6,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "速度",
+          "轻量",
+          "防守"
+        ],
+        [
+          "双打",
+          "平抽挡"
+        ]
+      ],
+      "answer_chars": 1003,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP003",
+      "group": "comparison",
+      "score": 0.5,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "Pro",
+          "Tour",
+          "Game",
+          "Play"
+        ],
+        [
+          "不能",
+          "只按",
+          "贵"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP004",
+      "group": "comparison",
+      "score": 0.8667,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1074,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP005",
+      "group": "comparison",
+      "score": 0.6167,
+      "answer_keypoints": 0.6,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "TURBOCHARGING N7",
+          "N7"
+        ],
+        [
+          "进阶",
+          "高级"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP006",
+      "group": "comparison",
+      "score": 0.4167,
+      "answer_keypoints": 0.2,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "羽航员",
+          "儿童"
+        ],
+        [
+          "长度",
+          "重量",
+          "握柄",
+          "力量"
+        ],
+        [
+          "孩子",
+          "量身",
+          "轻量"
+        ],
+        [
+          "不能",
+          "混用",
+          "一概而论"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP007",
+      "group": "comparison",
+      "score": 0.45,
+      "answer_keypoints": 0.4,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "头重",
+          "杀球",
+          "后场"
+        ],
+        [
+          "取舍",
+          "连续",
+          "负担"
+        ],
+        [
+          "不是",
+          "只看重量"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP008",
+      "group": "comparison",
+      "score": 0.45,
+      "answer_keypoints": 0.4,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "硬中杆",
+          "软中杆"
+        ],
+        [
+          "借力",
+          "甜区",
+          "反馈"
+        ],
+        [
+          "不能",
+          "只看单一参数"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP009",
+      "group": "comparison",
+      "score": 0.5,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "双打",
+          "防守",
+          "平抽挡",
+          "封网"
+        ],
+        [
+          "连续",
+          "体能",
+          "取舍"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP010",
+      "group": "comparison",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 1016,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP011",
+      "group": "comparison",
+      "score": 0.5167,
+      "answer_keypoints": 0.4,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "DriveX 12"
+        ],
+        [
+          "ASTROX 99 PRO"
+        ],
+        [
+          "不默认",
+          "谨慎"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "CMP012",
+      "group": "comparison",
+      "score": 0.3167,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "NANOFLARE 700 PRO"
+        ],
+        [
+          "速度",
+          "轻量",
+          "防守"
+        ],
+        [
+          "后场",
+          "重杀"
+        ],
+        [
+          "头重",
+          "力量"
+        ],
+        [
+          "牺牲",
+          "厚度",
+          "下压"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G001",
+      "group": "general_training_safety",
+      "score": 0.75,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "2027",
+          "01",
+          "04"
+        ],
+        [
+          "21分",
+          "过渡期",
+          "赛事"
+        ]
+      ],
+      "answer_chars": 752,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G002",
+      "group": "general_training_safety",
+      "score": 0.5,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "回中"
+        ],
+        [
+          "击球后"
+        ],
+        [
+          "准备位置",
+          "合理位置"
+        ],
+        [
+          "下一拍",
+          "移动"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G003",
+      "group": "general_training_safety",
+      "score": 0.625,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "六点"
+        ],
+        [
+          "启动",
+          "路线",
+          "稳定",
+          "回中"
+        ],
+        [
+          "膝踝",
+          "伤"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G004",
+      "group": "general_training_safety",
+      "score": 0.625,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "发接发",
+          "前三拍"
+        ],
+        [
+          "抢高点",
+          "压低",
+          "封网"
+        ],
+        [
+          "连贯",
+          "轮转"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G005",
+      "group": "general_training_safety",
+      "score": 0.75,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "崴脚",
+          "肿"
+        ],
+        [
+          "不能",
+          "诊断"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G006",
+      "group": "general_training_safety",
+      "score": 0.3,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "膝盖",
+          "疼"
+        ],
+        [
+          "装备",
+          "不能",
+          "治疗"
+        ],
+        [
+          "降低",
+          "负担"
+        ],
+        [
+          "医生",
+          "专业人士"
+        ],
+        [
+          "不鼓励",
+          "高强度",
+          "突击"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G007",
+      "group": "general_training_safety",
+      "score": 0.7,
+      "answer_keypoints": 0.4,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "热身",
+          "步法",
+          "基本动作"
+        ],
+        [
+          "循序渐进"
+        ],
+        [
+          "安全",
+          "疼痛"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G008",
+      "group": "general_training_safety",
+      "score": 0.625,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "单打",
+          "拉吊"
+        ],
+        [
+          "落点",
+          "节奏",
+          "调动"
+        ],
+        [
+          "后场",
+          "网前"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G009",
+      "group": "general_training_safety",
+      "score": 0.3667,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "热身",
+          "拉伸"
+        ],
+        [
+          "不是",
+          "越久越好"
+        ],
+        [
+          "动态",
+          "循序"
+        ],
+        [
+          "身体状态",
+          "安全"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "G010",
+      "group": "general_training_safety",
+      "score": 1.0,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 1.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 933,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U001",
+      "group": "grounding_policy",
+      "score": 0.475,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "不能",
+          "不应",
+          "猜"
+        ],
+        [
+          "待核验",
+          "来源"
+        ],
+        [
+          "只能",
+          "参数方向",
+          "建议核验"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U002",
+      "group": "grounding_policy",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 103,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U003",
+      "group": "grounding_policy",
+      "score": 0.6,
+      "answer_keypoints": 0.5,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "冲突",
+          "保留",
+          "说明"
+        ],
+        [
+          "不强行",
+          "唯一答案"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U004",
+      "group": "grounding_policy",
+      "score": 0.35,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "论坛",
+          "口碑"
+        ],
+        [
+          "体验倾向",
+          "线索"
+        ],
+        [
+          "不能",
+          "覆盖",
+          "官方参数"
+        ],
+        [
+          "来源",
+          "可信度"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U005",
+      "group": "grounding_policy",
+      "score": 0.475,
+      "answer_keypoints": 0.25,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "候选装备",
+          "商品库"
+        ],
+        [
+          "知识资料",
+          "解释"
+        ],
+        [
+          "参数方向"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U006",
+      "group": "grounding_policy",
+      "score": 0.8,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.0,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 136,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U007",
+      "group": "grounding_policy",
+      "score": 0.35,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "中低",
+          "低"
+        ],
+        [
+          "提示",
+          "待核验"
+        ],
+        [
+          "不作",
+          "确定规格"
+        ],
+        [
+          "备选",
+          "参数方向"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "U008",
+      "group": "grounding_policy",
+      "score": 0.35,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.25,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "一支球拍",
+          "一个 chunk"
+        ],
+        [
+          "避免",
+          "混淆"
+        ],
+        [
+          "型号对比",
+          "逐条规格"
+        ],
+        [
+          "series",
+          "product"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F001",
+      "group": "product_fact",
+      "score": 0.5,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.6667,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "羽航员",
+          "儿童",
+          "孩子"
+        ],
+        [
+          "轻量",
+          "大甜区",
+          "好上手"
+        ],
+        [
+          "参考价",
+          "非实时"
+        ],
+        [
+          "参数摘要",
+          "待核验",
+          "核验"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F002",
+      "group": "product_fact",
+      "score": 0.45,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.3333,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "ARCSABER D11"
+        ],
+        [
+          "参数摘要",
+          "待核验"
+        ],
+        [
+          "不能",
+          "直接说",
+          "头重硬杆"
+        ],
+        [
+          "来源",
+          "核验"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F003",
+      "group": "product_fact",
+      "score": 0.5,
+      "answer_keypoints": 0.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.6667,
+      "product_hit": 1.0,
+      "format": 1.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "ASTROX 99 LCW TOUR"
+        ],
+        [
+          "参考价",
+          "1680",
+          "非实时"
+        ],
+        [
+          "参数摘要",
+          "待核验"
+        ],
+        [
+          "source_confidence",
+          "中低"
+        ],
+        [
+          "不能",
+          "确定规格"
+        ]
+      ],
+      "answer_chars": 154,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F004",
+      "group": "recommendation",
+      "score": 0.93,
+      "answer_keypoints": 1.0,
+      "forbidden_content": 1.0,
+      "source_hit": 0.8,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [],
+      "answer_chars": 960,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F005",
+      "group": "recommendation",
+      "score": 0.42,
+      "answer_keypoints": 0.2,
+      "forbidden_content": 1.0,
+      "source_hit": 0.5,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "膝盖",
+          "不舒服"
+        ],
+        [
+          "不诊断",
+          "就医",
+          "医生"
+        ],
+        [
+          "双打",
+          "4U",
+          "5U",
+          "挥速"
+        ],
+        [
+          "避免",
+          "高强度",
+          "突击",
+          "疲劳"
+        ]
+      ],
+      "answer_chars": 243,
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "id": "F006",
+      "group": "recommendation",
+      "score": 0.78,
+      "answer_keypoints": 0.8,
+      "forbidden_content": 1.0,
+      "source_hit": 0.4,
+      "product_hit": 1.0,
+      "format": 0.0,
+      "forbidden_hits": [],
+      "missing_keypoint_groups": [
+        [
+          "单打",
+          "双打",
+          "场景"
+        ]
+      ],
+      "answer_chars": 784,
+      "ok": true,
+      "status_code": 200
+    }
+  ]
+}
