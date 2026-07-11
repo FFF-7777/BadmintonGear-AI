@@ -4,7 +4,7 @@
 """
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from config import RATE_LIMIT_LOGIN, RATE_LIMIT_REGISTER

@@ -10,7 +10,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from database import Base
-from models.user_profile import UserProfile
 from services.ai_service import AIService, GuideConstraints
 
 

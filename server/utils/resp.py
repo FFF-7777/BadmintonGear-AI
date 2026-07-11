@@ -2,7 +2,7 @@
 统一响应格式模块
 """
 
-from typing import Any, Optional
+from typing import Any
 
 
 def success(data: Any = None, msg: str = "操作成功") -> dict:

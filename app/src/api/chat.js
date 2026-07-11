@@ -77,10 +77,8 @@ export async function ensureToken() {
   if (existing) {
     try {
       await http.get('/user/profile/me', { headers: { Authorization: `Bearer ${existing}` } })
-      console.log('[ensureToken] ✅ 缓存 token 有效，直接复用')
       return existing
     } catch (e) {
-      console.warn('[ensureToken] ⚠️ 缓存 token 失效 (HTTP', e?.response?.status, ')，清除')
       clearInvalidToken()
     }
   }
@@ -97,12 +95,10 @@ export async function ensureToken() {
     const loginRes = await http.post('/auth/user/login', { username, password })
     const token = loginRes?.data?.data?.token
     if (token) {
-      console.log('[ensureToken] ✅ 直接登录成功（已存在用户）')
       setStored(TOKEN_KEY, token)
       return token
     }
   } catch (e) {
-    console.log('[ensureToken] 直接登录失败:', e?.response?.status, e?.response?.data?.msg || e.message)
   }
 
   // ── Step 4: 登录失败 → 注册新用户 ──
@@ -111,12 +107,10 @@ export async function ensureToken() {
     const regRes = await http.post('/auth/user/register', {
       username, password, type: 'user', nickname: '访客',
     })
-    console.log('[ensureToken] ✅ 注册成功', regRes?.data)
     registered = true
   } catch (e) {
     const status = e?.response?.status
     const msg = e?.response?.data?.msg || e.message
-    console.warn('[ensureToken] ⚠️ 注册异常 HTTP', status, msg)
 
     // 422=参数问题(用户名格式/太长等) → 换名重试
     if (status === 422) {
@@ -124,10 +118,8 @@ export async function ensureToken() {
       setStored(USER_KEY, username)
       try {
         await http.post('/auth/user/register', { username, password, type: 'user', nickname: '访客' })
-        console.log('[ensureToken] ✅ 换名重试注册成功')
         registered = true
       } catch (e2) {
-        console.warn('[ensureToken] ⚠️ 换名重试也失败:', e2?.response?.data?.msg || e2.message)
       }
     }
     // 400=用户名已存在（但登录却失败了？可能是密码不一致，忽略）
@@ -139,7 +131,6 @@ export async function ensureToken() {
     const loginRes = await http.post('/auth/user/login', { username, password })
     const token = loginRes?.data?.data?.token
     if (token) {
-      console.log('[ensureToken] ✅ 登录成功, token_len=', token.length)
       setStored(TOKEN_KEY, token)
       return token
     }
@@ -151,7 +142,6 @@ export async function ensureToken() {
     // ── Step 6: 终极兜底 —— 尝试用全新用户名注册+登录（最多 3 次）──
     for (let attempt = 0; attempt < 3; attempt++) {
       const freshName = makeGuestName()
-      console.log(`[ensureToken] 🔄 兜底尝试 ${attempt + 1}/3:`, freshName)
       try {
         await http.post('/auth/user/register', { username: freshName, password, type: 'user', nickname: '访客' })
         const lr = await http.post('/auth/user/login', { username: freshName, password })
@@ -159,11 +149,9 @@ export async function ensureToken() {
         if (t) {
           setStored(USER_KEY, freshName)
           setStored(TOKEN_KEY, t)
-          console.log('[ensureToken] ✅ 兜底登录成功!')
           return t
         }
       } catch (ignored) {
-        console.log('[ensureToken] 兜底', attempt + 1, '失败:', ignored?.response?.status || ignored.message)
       }
     }
     throw new Error('认证失败: ' + (typeof detail === 'string' ? detail.slice(0, 200) : JSON.stringify(detail)))

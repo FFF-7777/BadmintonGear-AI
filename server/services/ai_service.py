@@ -3,7 +3,6 @@ AI智能客服服务
 基于LangChain RAG实现知识增强问答
 支持阻塞式调用与异步流式输出
 """
-import datetime
 import logging
 import uuid
 import json
@@ -66,13 +65,11 @@ from config import (
 )
 from models.chat import ChatMessage
 from models.user_profile import UserProfile
-from services.vector_store import vector_store_service, safe_search
+from services.vector_store import safe_search
 from services.rag_pipeline import (
     analyze_query,
     classify_guide_intent,
-    classify_question_scope,
     extract_constraints,
-    is_greeting_or_chitchat,
     GuideConstraints,
 )
 from services.recommendation import match_products_for_query, recommend_products
@@ -1073,7 +1070,7 @@ class AIService:
 
         if analysis.scope == "greeting":
             try:
-                user_msg = self._persist_turn(db, user_id, session_id, "user", message)
+                self._persist_turn(db, user_id, session_id, "user", message)
 
                 yield json.dumps(
                     {"type": "session_id", "session_id": session_id},
@@ -1084,7 +1081,7 @@ class AIService:
                 async for msg in _yield_content_chunks(answer):
                     yield json.dumps(msg, ensure_ascii=False)
 
-                ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
+                self._persist_turn(db, user_id, session_id, "assistant", answer)
                 yield json.dumps({
                     "type": "done",
                     "answer": sanitize_superlative(answer),
@@ -1098,7 +1095,7 @@ class AIService:
 
         if analysis.scope == "offtopic":
             try:
-                user_msg = self._persist_turn(db, user_id, session_id, "user", message)
+                self._persist_turn(db, user_id, session_id, "user", message)
                 yield json.dumps(
                     {"type": "session_id", "session_id": session_id},
                     ensure_ascii=False,
@@ -1106,7 +1103,7 @@ class AIService:
                 answer = self._handle_offtopic(message)
                 async for msg in _yield_content_chunks(answer):
                     yield json.dumps(msg, ensure_ascii=False)
-                ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
+                self._persist_turn(db, user_id, session_id, "assistant", answer)
                 yield json.dumps({
                     "type": "done",
                     "answer": sanitize_superlative(answer),
@@ -1120,7 +1117,7 @@ class AIService:
 
         if analysis.scope in {"commerce_boundary", "prompt_boundary", "medical_boundary"}:
             try:
-                user_msg = self._persist_turn(db, user_id, session_id, "user", message)
+                self._persist_turn(db, user_id, session_id, "user", message)
                 yield json.dumps(
                     {"type": "session_id", "session_id": session_id},
                     ensure_ascii=False,
@@ -1128,7 +1125,7 @@ class AIService:
                 answer = self._handle_boundary(message, analysis.scope)
                 async for msg in _yield_content_chunks(answer):
                     yield json.dumps(msg, ensure_ascii=False)
-                ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
+                self._persist_turn(db, user_id, session_id, "assistant", answer)
                 yield json.dumps({
                     "type": "done",
                     "answer": sanitize_superlative(answer),
@@ -1149,7 +1146,7 @@ class AIService:
             fresh_constraints=fresh_constraints, profile_constraints=profile_constraints,
         )
         try:
-            user_msg = self._persist_turn(db, user_id, session_id, "user", message)
+            self._persist_turn(db, user_id, session_id, "user", message)
             # 跨会话画像：仅合并本轮新推断出的约束，不空覆盖既有值。
             self._persist_profile(db, user_id, fresh_constraints)
 
@@ -1209,7 +1206,7 @@ class AIService:
                 async for msg in _yield_content_chunks(full_answer):
                     yield json.dumps(msg, ensure_ascii=False)
 
-            ai_msg = self._persist_turn(db, user_id, session_id, "assistant", full_answer)
+            self._persist_turn(db, user_id, session_id, "assistant", full_answer)
 
             # 只有消息成功落库后才通知客户端完成。
             yield json.dumps(

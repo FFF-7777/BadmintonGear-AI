@@ -490,8 +490,6 @@ class VectorStoreService:
             for term in toks:
                 doc_freq[term] = doc_freq.get(term, 0) + 1
         doc_lens = [sum(toks.values()) for toks in corpus]
-        avgdl = sum(doc_lens) / len(doc_lens)
-        n_docs = len(corpus)
 
         query_tokens = tokenize(analysis.expanded_query)
         if not query_tokens:

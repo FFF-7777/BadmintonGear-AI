@@ -70,5 +70,9 @@ _eval_token.txt
 # DeepEval 本地缓存
 **/.deepeval/
 
+# 简历 / 临时测试 md（个人隐私 + 非项目核心资产，不入库）
+简历_*.md
+知识库/向量化前先向量化此测试文件.md
+
 # Windows 保留名误创建文件
 nul

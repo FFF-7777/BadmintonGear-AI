@@ -9,7 +9,7 @@ import zipfile
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence
 from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape as xml_escape
 

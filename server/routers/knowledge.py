@@ -19,7 +19,7 @@ from schemas.schemas import KnowledgeFileOut
 from services.file_parser import parse_file, get_file_type
 from services.knowledge_policy import is_vectorizable_knowledge_filename, vectorization_policy_message
 from services.rag_pipeline import extract_model_tokens, infer_brand, infer_doc_type, infer_series
-from services.vector_store import vector_store_service, safe_add_documents, safe_search, safe_delete_documents
+from services.vector_store import safe_add_documents, safe_search, safe_delete_documents
 from utils.deps import get_current_admin
 from utils.resp import success, error, page_result
 

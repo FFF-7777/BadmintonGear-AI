@@ -40,6 +40,15 @@ scripts/  导入、备份、烟测与遗留代码审计脚本
 - `unverified_fields` 会进入回答注意事项和前端展示，提示购买前核验。
 - 参考价只用于预算对比，不代表实时售价、最低价或到手价。
 
+## 评测结果与数据
+
+系统有可量化的评测闭环，所有分数均标注前提与边界，诚信可审计。
+
+- **模型**：生成 `qwen3.7-plus`（`temperature=0.2`）；嵌入 `text-embedding-v4`（2048 维）；重排 `qwen3-rerank`；DeepEval 独立裁判用 `qwen3.6-flash-2026-04-16`（与生成模型不同款，降低自评偏差）。
+- **主指标 · 确定性黄金集（评测有效版）**：基于「已修正评测瑕疵」的黄金集（64 条球拍子集，端到端由 qwen3.7-plus 生成），综合 **0.8816**。分组分：routing 1.000 / general_training_safety 0.909 / recommendation 0.899 / grounding_policy 0.891 / parameter 0.856 / comparison 0.813 / product_fact 0.778。
+- **佐证 · DeepEval 独立裁判（全量 64 条，同步串行）**：Faithfulness **0.8142** / AnswerRelevancy 0.8371 / ContextualPrecision 0.7906 / ContextualRecall 0.8024 / Hallucination **0.2008** / 专业度[GEval] 0.8407。两条独立路径共同定位唯一真弱点：**来源标注与检索召回完整性**。
+- **诚信说明**：原始黄金集由初始化模型（GPT-5.5）拟定，混入了指向知识库不存在来源的源关键词；已修正使评测有效，0.8816 反映系统真实能力。Ragas 0.4.3 与百炼端点结构性不兼容（多采样 → 400、embedding 方法不匹配），已如实排除于三角验证之外。
+
 ## 最终切块口径
 
 - 普通知识文档：`CHUNK_SIZE=1000`、`CHUNK_OVERLAP=120`、`MIN_CHUNK_CHARS=180`、`MAX_CHUNK_CHARS=1400`。

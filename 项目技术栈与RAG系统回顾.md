@@ -215,7 +215,7 @@ _persist_profile(db, user_id, fresh)      # 仅合并本轮新约束，空不写
 
 | 指标 | 数值 |
 |---|---|
-| **确定性综合 overall** | **0.882** |
+| **确定性综合 overall** | **0.8816** |
 | routing（路由准确） | 1.00 |
 | general_training_safety | 0.909 |
 | recommendation（推荐） | 0.899 |
@@ -224,9 +224,9 @@ _persist_profile(db, user_id, fresh)      # 仅合并本轮新约束，空不写
 | comparison（对比） | 0.813 |
 | product_fact（商品事实） | 0.778 |
 
-**DeepEval 独立裁判**（三角验证佐证）：Faithfulness **0.996** / Hallucination **0.011** / AnswerRelevancy 0.82——印证"高忠实、低幻觉、相关好"。
+**DeepEval 独立裁判（全量 64 条，qwen3.6-flash-2026-04-16 同步串行）**：Faithfulness **0.8142** / AnswerRelevancy 0.8371 / ContextualPrecision 0.7906 / ContextualRecall 0.8024 / Hallucination **0.2008** / 专业度[GEval] 0.8407——印证"高忠实、非零幻觉、相关好"；Hallucination 0.20 与确定性集 source_hit 偏弱共同定位唯一真弱点（来源标注 + 检索召回完整性）。
 
-**唯一真弱点**（三角验证共同定位）：source_hit / ContextualRecall 偏低 = **来源标注与检索召回完整性不足**，而非答案内容问题。这是后续合法提分方向（强化来源标注、补检索覆盖），不是刷分。
+**唯一真弱点**（三角验证共同定位）：source_hit / ContextualRecall 偏低 = **来源标注与检索召回完整性不足**，而非答案内容问题。DeepEval 全量 Hallucination 0.2008（=约 20% 幻觉水平）从独立裁判角度再次印证同一弱点。这是后续合法提分方向（强化来源标注、补检索覆盖），不是刷分。
 
 **成本**：检索侧（向量召回 + BM25 + 六维精排 + RRF）零 LLM 调用；仅 rerank + 生成为百炼 API 费用。
 
@@ -247,7 +247,7 @@ _persist_profile(db, user_id, fresh)      # 仅合并本轮新约束，空不写
 > - **output_guard** 拦截绝对化夸大表述；
 > - 工程韧性：HNSW 自愈 + 子进程隔离 + UTF-8 管道。
 >
-> **Result**：确定性黄金集综合 **0.882**（64 条领域子集）；DeepEval 独立裁判 Faithfulness **0.996** / Hallucination **0.011**，三角验证印证高忠实低幻觉；检索侧零 LLM 调用控成本。评测以"修正评测有效的黄金集"为尺度（原始版由初始化模型混入不存在来源的源关键词，已修正使评测有效），诚信可审计。
+> **Result**：确定性黄金集综合 **0.8816**（64 条领域子集）；DeepEval 独立裁判全量 64 条 Faithfulness **0.8142** / Hallucination **0.2008** / AnswerRelevancy 0.8371 / 专业度 0.8407，三角验证印证高忠实、非零幻觉；检索侧零 LLM 调用控成本。评测以"修正评测有效的黄金集"为尺度（原始版由初始化模型混入不存在来源的源关键词，已修正使评测有效），诚信可审计。
 
 ---
 
