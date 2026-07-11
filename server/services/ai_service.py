@@ -170,19 +170,14 @@ class AIService:
         compare_hint = ""
         if recommended:
             guide_hint = (
-                "推荐类问题请固定使用四段式回答：\n"
+                "推荐类问题必须且只能使用以下四段式回答（有候选就必须推荐，不得使用保守/拒答模板）：\n"
                 "## 推荐结论\n"
                 "## 为什么适合你\n"
                 "## 注意事项\n"
                 "## 替代方案\n"
-                "如果用户信息不足，改用：\n"
-                "## 初步判断\n"
-                "## 还需要确认的信息\n"
-                "## 保守选择方向\n"
-                "## 暂不建议\n"
             )
             # 候选装备块（P2e）：只展示前 PRODUCTS_MAX_SHOWN 个，规格 JSON 截断，
-            # 整体封顶，保证“知识资料”优先占用上下文预算。
+            # 整体封顶，保证"知识资料"优先占用上下文预算。
             lines = []
             for index, item in enumerate(recommended[:PRODUCTS_MAX_SHOWN], start=1):
                 specs_json = json.dumps(item.get("specs") or {}, ensure_ascii=False)
@@ -195,7 +190,7 @@ class AIService:
                     f" 适配理由：{item['reason']} 风险提示：{'；'.join(item.get('risk') or [])}"
                     f" 规格：{specs_json}"
                 )
-            products_block = "\n".join(lines)
+            products_block = "【系统推荐引擎已为你筛选出以下候选装备（已通过预算/硬规则过滤），你必须从以下列表中选择推荐，不可使用列表外的型号：】\n" + "\n".join(lines)
             if len(products_block) > PRODUCTS_BLOCK_CAP:
                 products_block = products_block[:PRODUCTS_BLOCK_CAP] + "\n...(候选装备过多已截断)"
 
@@ -260,20 +255,26 @@ class AIService:
         二、必须遵守的约束
         ====================
 
+        ★ 铁律（最高优先级，覆盖所有其他规则）：
+        用户问推荐装备时，只要「候选装备」区域有内容（哪怕全是 backup），
+        就必须输出具体型号 + 推荐四段式。**永远不要以"不够匹配""置信度低""参数不全"
+        等理由拒绝推荐或改用保守格式。** 新手也必须给具体拍子。
+
         1. 不得编造装备参数。
            装备名称、参考价、重量、平衡点、中杆硬度、规格等具体字段，只能引用「候选装备」中的真实字段。
 
         2. 不得推荐候选装备之外的具体型号。
-           如果候选装备为空，或候选装备明显不匹配用户需求，只能说明“当前候选库中没有足够匹配的具体型号”，然后给出选购方向，不能硬编型号。
-
-        2.1 候选装备中的「推荐角色」为 backup 时，只能作为备选或补充说明，不得写成首推。
-            如果所有候选都是 backup，必须说明“当前没有足够可靠的首推型号”，再给保守方向。
+           有候选（含 backup）就必须输出具体可参考型号——用户来问就是想要推荐，不要以"不够匹配"为由拒绝。
+           **绝对禁止**在候选列表非空时使用「初步判断/还需要确认的信息/保守选择方向/暂不建议」等保守拒答格式；
+           候选中的「推荐角色」为 backup 时：照样用推荐四段式输出，将 backup 标注为"参考选项/备选"而非"首选"，并在注意事项中说明其不完全匹配之处（如来源置信度、参数缺失等）。
+           仅当候选列表完全为空（连一个 backup 都没有）时，才说明"当前候选库中没有足够匹配的具体型号"并给出选购方向。不得编造型号。
 
         3. 价格只作为预算和选品对比参考。
            不得声称是实时售价、最低价、到手价、历史低价或平台成交价。
 
         4. 对新手用户：
-           优先考虑容错率、易上手、舒适度、甜区友好、发力门槛低，不要盲目推荐高难度进攻拍。
+           优先考虑容错率、易上手、舒适度、甜区友好、发力门槛低。
+           若用户明确表达进攻/杀球意图，可以照样推荐中高难度进攻拍（含 stiff 中杆），但必须先明确说出它对新手"不太适合/门槛较高"（例如"这类进攻拍发力门槛高，对新手不太适合"），再照样给出具体可参考型号，并附发力门槛、适应周期、技术要求等注意事项作为警告。
 
         5. 对身体不适用户：
            优先考虑舒适、减震、保护、低负担表达。
@@ -341,16 +342,16 @@ class AIService:
         可以引用知识资料中的通用选购逻辑。
         如果涉及具体型号，仍然只能使用候选装备中的型号。
 
-        【D. 候选装备为空或不匹配时】
+        【D. 候选装备处理规则（铁律，不可违反）】
 
         不得编造型号。
 
-        固定使用：
-        ## 初步判断
-        ## 还需要确认的信息
-        ## 保守选择方向
-        ## 暂不建议
-        必须说明“当前候选装备库中没有足够匹配的具体型号，因此我不能硬推荐具体装备”。
+        **铁律：只要「候选装备」区域有内容（哪怕全是 backup），就必须用推荐四段式输出具体型号。**
+        - 候选中有 primary → 正常推荐四段式，标注首选型号。
+        - 候选中只有 backup（无 primary）→ 同样用推荐四段式，将 backup 标注为"参考选项/备选"，在注意事项中说明不完全匹配之处。
+        - **绝对禁止**在有候选时使用以下任何格式：「初步判断」「还需要确认的信息」「保守选择方向」「暂不建议」「候选库中没有足够匹配」等拒答/保守措辞。
+
+        仅当「候选装备」区域显示为「（无候选装备）」——即候选列表完全为空、连一个 backup 都没有——才允许给出选购方向而不推荐具体型号。
 
         ====================
         四、回答风格
@@ -488,6 +489,82 @@ class AIService:
             "暂不建议把系列定位当成具体型号参数，也不建议仅凭非官方信息下结论。"
         )
 
+    # ------------------------------------------------------------------
+    # 后处理守卫：LLM 在有候选时仍用保守/拒答格式 → 强制替换为推荐文本
+    # ------------------------------------------------------------------
+    _CONSERVATIVE_MARKERS = [
+        "初步判断", "还需要确认的信息", "保守选择方向",
+        "暂不建议", "没有足够匹配", "不能硬推", "不能推荐具体",
+        "无法推荐", "候选库中没有", "当前候选装备库中没有",
+    ]
+
+    @staticmethod
+    def _enforce_recommendation(answer: str, recommended: Sequence[dict]) -> str:
+        """代码级兜底：有候选却用了保守格式时，强制用结构化数据生成推荐回复。"""
+        if not recommended:
+            return answer
+        # 检测是否命中保守/拒答格式
+        is_conservative = any(marker in answer for marker in AIService._CONSERVATIVE_MARKERS)
+        if not is_conservative:
+            return answer
+
+        # 用结构化候选数据构建标准推荐四段式
+        primary = next((item for item in recommended if item.get("recommendation_role") == "primary"), None)
+        top = primary or recommended[0]
+        others = [item for item in recommended[:5] if item["id"] != top["id"]]
+
+        role_label = "首选" if primary else "参考选项（备选）"
+
+        lines = []
+        lines.append("## 推荐结论")
+        lines.append(
+            f"根据你的需求，为你推荐 **{top['name']}**（约 ￥{top.get('price', '?')}），"
+            f"作为{role_label}。"
+        )
+        if not primary and len(recommended) > 1:
+            lines.append(f"（注：以下为备选参考，参数来源置信度为「{top.get('confidence', '低')}」，建议以实际商品页为准。）")
+
+        lines.append("")
+        lines.append("## 为什么适合你")
+        reason = top.get("reason", "综合参数匹配度较高")
+        lines.append(f"- {reason}")
+        specs = top.get("specs") or {}
+        if specs.get("weight_class"):
+            lines.append(f"- {specs['weight_class']}重量，挥拍门槛适中")
+        if specs.get("balance"):
+            _bal = {"head-heavy": "头重进攻型", "even-balanced": "平衡均衡型", "head-light": "头轻灵活型"}
+            lines.append(f"- {_bal.get(specs['balance'], specs['balance'])}，适合多种打法场景")
+        if specs.get("shaft_flex"):
+            _shaft = {"flexible": "中软杆，易上手发力", "medium": "中杆适中", "stiff": "中硬杆，需要一定基础", "extra-stiff": "高硬杆，进阶以上适用"}
+            lines.append(f"- {_shaft.get(specs['shaft_flex'], specs['shaft_flex'])}")
+
+        lines.append("")
+        lines.append("## 注意事项")
+        conf = top.get("confidence", "低")
+        if conf == "低":
+            lines.append("- 该型号部分参数来源于公开资料整理，建议购买前确认最新规格和价格。")
+        risk = top.get("risk") or []
+        if risk:
+            for r in risk[:3]:
+                lines.append(f"- {r}")
+        # 新手警告
+        if specs.get("shaft_flex") in ("stiff", "extra-stiff"):
+            lines.append("- 中杆偏硬，新手可能需要适应期，注意循序渐进。")
+        if specs.get("balance") == "head-heavy":
+            lines.append("- 头重拍防守稍吃力，双打频繁防守时可考虑搭配速度拍。")
+
+        if others:
+            lines.append("")
+            lines.append("## 替代方案")
+            for item in others[:3]:
+                label = "备选" if item.get("recommendation_role") != "primary" else "首选"
+                lines.append(
+                    f"- **{item['name']}**（￥{item.get('price', '?')}）— "
+                    f"{item.get('reason', '匹配度较高')} [{label}]"
+                )
+
+        return "\n".join(lines)
+
     @staticmethod
     def _compare_fallback_answer(question: str, analysis, recommended: Sequence[dict], context_docs: Sequence) -> str:
         left, right = (analysis.compare_targets[:2] if len(analysis.compare_targets) >= 2 else ("A", "B"))
@@ -577,7 +654,59 @@ class AIService:
                 continue
             merged.append(item)
             seen.add(item["id"])
-        return merged[:5]
+        # 知识库补候选：当结构化候选全为 backup（球拍 specs 99% 为空，
+        # _spec_fit 无法区分打法→引擎只能给速度/均衡拍）时，改用知识库
+        # （球拍推荐.md 等）召回的真实型号补充候选。把 KB 章节正文喂给
+        # match_products_for_query（同一套型号抽取+商品匹配逻辑），抽出的具体
+        # 型号即来自领域知识，再按预算过滤、去重，前置到 backup 候选之前。
+        enriched = AIService._enrich_from_kb(db, message, merged, constraints.budget_max)
+        return enriched[:5]
+
+    @staticmethod
+    def _enrich_from_kb(db, message: str, base_candidates: Sequence[dict], budget_max=None) -> List[dict]:
+        """候选后处理：用知识库补具体型号，专治「specs 空导致引擎推不准」。
+
+        仅在①候选非空 且 ②全部为 backup（无 primary，即结构化层给不出可信匹配）
+        时启用；若已有 primary 候选（specs 完整或型号直连命中）则原样返回不干预。
+        补候选来自知识库章节经 match_products_for_query 匹配出的商品库实体，
+        前端卡片与 LLM 提名都基于同一份候选，避免「文字说 A、卡片是 B」。
+        """
+        if not base_candidates:
+            return list(base_candidates)
+        if any(c.get("recommendation_role") == "primary" for c in base_candidates):
+            return list(base_candidates)
+        try:
+            kb = safe_search(message, top_k=6)
+            docs = getattr(kb, "documents", None) or []
+        except Exception:
+            return list(base_candidates)
+        if not docs:
+            return list(base_candidates)
+
+        enriched: List[dict] = []
+        seen = set(c.get("id") for c in base_candidates if c.get("id") is not None)
+        for doc in docs:
+            text = getattr(doc, "page_content", None) or str(doc)
+            if not text or len(text) < 6:
+                continue
+            try:
+                matches = match_products_for_query(db, text, limit=2)
+            except Exception:
+                continue
+            for m in matches:
+                pid = m.get("id")
+                if pid is None or pid in seen:
+                    continue
+                price = float(m.get("price") or 0)
+                if budget_max is not None and price > float(budget_max):
+                    continue
+                seen.add(pid)
+                enriched.append(m)
+        if not enriched:
+            return list(base_candidates)
+        # 知识库补候选（领域知识驱动，比空 specs 的 backup 更可信）前置，原 backup 兜底
+        final = [*enriched, *(c for c in base_candidates if c.get("id") not in seen)]
+        return final[:6]
 
     @staticmethod
     def _fallback_answer(question: str) -> str:
@@ -1033,6 +1162,9 @@ class AIService:
             else:
                 answer = self._analysis_fallback_answer(message, analysis, recommended, context_docs)
 
+            # 后处理守卫：有候选却用保守格式 → 强制替换为推荐文本
+            answer = AIService._enforce_recommendation(answer, recommended)
+
             ai_msg = self._persist_turn(db, user_id, session_id, "assistant", answer)
             return {
                 "session_id": session_id,
@@ -1207,6 +1339,9 @@ class AIService:
                     yield json.dumps(msg, ensure_ascii=False)
 
             self._persist_turn(db, user_id, session_id, "assistant", full_answer)
+
+            # 后处理守卫：有候选却用保守格式 → 强制替换（done 消息中的完整回复）
+            full_answer = AIService._enforce_recommendation(full_answer, recommended)
 
             # 只有消息成功落库后才通知客户端完成。
             yield json.dumps(

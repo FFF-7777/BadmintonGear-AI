@@ -5,6 +5,7 @@ Chroma向量数据库服务
 import hashlib
 import json
 import logging
+import os
 import re
 import subprocess
 import sys as _sys
@@ -15,9 +16,27 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+
+# ---------------------------------------------------------------------------
+# 向量存储模式开关
+# ---------------------------------------------------------------------------
+# VECTOR_STORE_LOCAL=1：主进程**完全不导入 chromadb**，检索与入库只走本地 npz
+# 向量快照（vector_cache.npz / vector_cache_meta.json）。
+# 背景：本机 Windows 上 chromadb 1.x 的 HNSW compactor 后台线程会原生崩溃
+# (segfault，无法被 Python try/except 捕获)，不仅会拖死执行写入的进程，也会让
+# 任何直接 import chromadb 的主进程在约 2 分钟后莫名退出。本地模式彻底规避该问题，
+# 且向量数据以明文 npz 落盘，可读、可重建、确定性好。
+# 关闭（默认）：维持原有 chroma_runner 子进程隔离路径（仅在你已换上可用的 Chroma
+# 版本、并重新构建向量索引后使用）。
+VECTOR_STORE_LOCAL = os.environ.get("VECTOR_STORE_LOCAL", "0").lower() in {
+    "1", "true", "yes", "on"
+}
+if VECTOR_STORE_LOCAL:
+    Chroma = None  # type: ignore[assignment]  # 本地模式：主进程零 chromadb 依赖
+else:
+    from langchain_chroma import Chroma
 
 
 from config import (
@@ -38,6 +57,7 @@ from config import (
     RAG_RELEVANCE_THRESHOLD,
     RERANK_ENABLED,
 )
+from services.knowledge_policy import DOC_SOURCE_CONFIDENCE
 from services.rag_pipeline import (
     QueryAnalysis,
     RetrievalCandidate,
@@ -110,6 +130,10 @@ class VectorStoreService:
         获取或创建Chroma向量存储实例
         :return: Chroma向量存储
         """
+        if VECTOR_STORE_LOCAL:
+            raise RuntimeError(
+                "VECTOR_STORE_LOCAL 模式下 Chroma 已禁用：检索与入库请走 npz 本地缓存"
+            )
         if self._vectorstore is None:
             self._vectorstore = Chroma(
                 collection_name=CHROMA_COLLECTION,
@@ -173,6 +197,11 @@ class VectorStoreService:
                 meta["model_tokens"] = list(dict.fromkeys(model_tokens))
             if model_aliases:
                 meta["model_aliases"] = list(dict.fromkeys(model_aliases))
+            # 来源置信度：按文件名策略打标，仅当映射中存在才写入，
+            # 避免给无此字段的文档注入空值触发 Chroma 写入错误。
+            src_conf = DOC_SOURCE_CONFIDENCE.get(file_name)
+            if src_conf:
+                meta["source_confidence"] = src_conf
             document.metadata.update(meta)
         return documents
 
@@ -339,6 +368,15 @@ class VectorStoreService:
         if not documents:
             raise ValueError("文件未生成有效知识分块")
 
+        if VECTOR_STORE_LOCAL:
+            # 本地模式：只写 npz 快照，绝不触碰 Chroma。
+            ids = [document.metadata["chunk_id"] for document in documents]
+            texts = [document.page_content for document in documents]
+            embeddings = self.embeddings.embed_documents(texts)
+            self._delete_vector_cache_by_file_id(file_id)
+            self._upsert_vector_cache(file_id, ids, documents, embeddings)
+            return len(documents)
+
         existing = self.vectorstore.get(
             where={"file_id": file_id},
             include=["metadatas"],
@@ -370,6 +408,9 @@ class VectorStoreService:
         根据文件ID删除向量数据
         :param file_id: 知识库文件ID
         """
+        if VECTOR_STORE_LOCAL:
+            self._delete_vector_cache_by_file_id(file_id)
+            return
         existing = self.vectorstore.get(
             where={"file_id": file_id},
             include=["metadatas"],
@@ -395,6 +436,9 @@ class VectorStoreService:
         category: Optional[str],
         candidate_k: int,
     ) -> List[RetrievalCandidate]:
+        if VECTOR_STORE_LOCAL:
+            # 本地模式：直接走 npz 暴力余弦召回，不经过 Chroma。
+            return self._cache_dense_recall(query, route, category, candidate_k)
         kwargs = {"k": candidate_k}
         if category:
             kwargs["filter"] = {"category": category}
@@ -447,23 +491,32 @@ class VectorStoreService:
         analysis: QueryAnalysis,
         candidate_k: int,
     ) -> List[RetrievalCandidate]:
-        # P1c：按前置分类做 where 预过滤，减少全库拉取与内存扫描；
-        # _build_documents 总会写入 category（缺失时回退 "general"），故该过滤安全。
-        # 纯读取 chroma（collection.get），不改写入/索引，"知识库向量库不要动"约束下安全。
-        get_kwargs: Dict[str, object] = {"include": ["documents", "metadatas"]}
-        if analysis.category:
-            get_kwargs["where"] = {"category": analysis.category}
-        rows = []
-        try:
-            data = self.vectorstore.get(**get_kwargs)
-            source_rows = zip(data.get("documents", []), data.get("metadatas", []))
-        except Exception as exc:
-            logger.warning("Chroma metadata recall failed, falling back to local vector cache: %s", exc)
+        rows: List[tuple] = []
+        if VECTOR_STORE_LOCAL:
+            # 本地模式：直接从 npz 缓存取 (content, metadata) 做 BM25 召回。
             cache = self._load_vector_cache()
             source_rows = [
                 (record.get("page_content", ""), record.get("metadata") or {})
                 for record in (cache or {}).get("records", [])
             ]
+        else:
+            # P1c：按前置分类做 where 预过滤，减少全库拉取与内存扫描；
+            # _build_documents 总会写入 category（缺失时回退 "general"），故该过滤安全。
+            # 纯读取 chroma（collection.get），不改写入/索引，"知识库向量库不要动"约束下安全。
+            get_kwargs: Dict[str, object] = {"include": ["documents", "metadatas"]}
+            if analysis.category:
+                get_kwargs["where"] = {"category": analysis.category}
+            rows = []
+            try:
+                data = self.vectorstore.get(**get_kwargs)
+                source_rows = zip(data.get("documents", []), data.get("metadatas", []))
+            except Exception as exc:
+                logger.warning("Chroma metadata recall failed, falling back to local vector cache: %s", exc)
+                cache = self._load_vector_cache()
+                source_rows = [
+                    (record.get("page_content", ""), record.get("metadata") or {})
+                    for record in (cache or {}).get("records", [])
+                ]
 
         for content, metadata in source_rows:
             metadata = metadata or {}
@@ -688,6 +741,15 @@ def safe_search(
     timeout: int = 40,
 ) -> SimpleNamespace:
     """隔离式检索：子进程崩溃或异常时返回空文档与真实原因，不影响主进程。"""
+    if VECTOR_STORE_LOCAL:
+        # 本地模式：主进程内直接走 npz 检索，无需 chroma_runner 子进程（也规避其崩溃）。
+        res = vector_store_service.search(query, history=history, top_k=top_k)
+        return SimpleNamespace(
+            documents=res.documents,
+            route_counts=res.route_counts,
+            route_errors=res.route_errors,
+            analysis=res.analysis,
+        )
     payload = {
         "mode": "search",
         "query": query,
@@ -740,6 +802,13 @@ def safe_add_documents(
     timeout: int = 600,
 ) -> tuple:
     """隔离式入库：返回 (chunk_count, error_msg)。子进程崩溃或异常都返回错误原因。"""
+    if VECTOR_STORE_LOCAL:
+        # 本地模式：主进程内直接写 npz 快照，不使用 Chroma 子进程。
+        try:
+            count = vector_store_service.add_documents(text, file_id, file_name, file_type)
+            return count, None
+        except Exception as exc:  # noqa: BLE001
+            return 0, f"本地向量化失败：{exc}"
     payload = {
         "mode": "add",
         "text": text,
@@ -759,6 +828,13 @@ def safe_add_documents(
 def safe_delete_documents(file_id: int, timeout: int = 40) -> Optional[str]:
     """隔离式删除：返回 None 表示成功，返回字符串表示错误原因（子进程崩溃/异常）。
     直接调用 Chroma 删除可能触发原生崩溃，必须走子进程隔离（修复删除接口遗漏的隔离缺口）。"""
+    if VECTOR_STORE_LOCAL:
+        # 本地模式：主进程内直接删 npz 快照。
+        try:
+            vector_store_service.delete_by_file_id(file_id)
+            return None
+        except Exception as exc:  # noqa: BLE001
+            return f"本地向量删除失败：{exc}"
     payload = {"mode": "delete", "file_id": file_id}
     data = _run_chroma_subprocess(payload, timeout=timeout)
     if not data:

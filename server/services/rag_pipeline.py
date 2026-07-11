@@ -32,10 +32,15 @@ _SHUTTLE_EXCLUDE = ("拍", "鞋", "线", "球拍", "球鞋", "拍线", "球线")
 
 FOLLOW_UP_MARKERS = ("这个", "那个", "它", "上面", "刚才", "怎么", "怎么办", "呢", "可以吗")
 NUMBERED_TITLE_RE = re.compile(
-    r"^\s*(?:#{1,6}\s*)?(?:\*\*)?(\d+)[.、．]\s*(.+?)(?:\*\*)?\s*$"
+    r"^\s*(?:#{1,6}\s*)?(?:\*\*)?(\d+)\\?[.、．]\s*(.+?)(?:\*\*)?\s*$"
 )
 MODEL_HEADING_RE = re.compile(
     r"^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?([A-Za-z]{1,12}\s*[- ]?\d{1,4}(?:\s*[A-Za-z0-9-]{1,6})?|(?:天斧|战戟|极速|神速|雷霆|弓箭|音速|疾光|65Z)\s*[- ]?\d{1,4}(?:\s*[A-Za-z0-9-]{1,6})?).*$"
+)
+# FAQ 常见问题类标题：### RACKET-Q001｜问题？ / Q140：问题 / YONEX-Q012｜问题
+# 仅匹配「行首为 (可选##前缀)(可选英文标签-)Q<数字>(分隔符)」的结构，避免误切正文里的 "参见 Q002｜"。
+FAQ_TITLE_RE = re.compile(
+    r"^\s*(?:#{1,6}\s*)?(?:[A-Za-z]+-)?Q\d+\s*[｜|:：]\s*(.+?)\s*$"
 )
 WORD_RE = re.compile(r"[a-zA-Z0-9]+")
 CHINESE_RE = re.compile(r"[\u4e00-\u9fff]+")
@@ -51,13 +56,19 @@ CHINESE_MODEL_RE = re.compile(
 COMPARE_SPLIT_RE = re.compile(r"\s*(?:和|跟|与|vs\.?|VS\.?|还是)\s*")
 
 BADMINTON_GENERAL_KEYWORDS = (
-    "热身", "拉伸", "步法", "发力", "握拍", "高远球", "杀球", "吊球", "搓球", "勾对角",
-    "上网", "启动", "启动步", "米字步", "交叉步", "并步", "手法", "训练", "练习",
-    "发球", "接发", "站位", "轮转", "步伐", "体能", "如何打", "怎么打", "怎么练",
+    "热身", "拉伸", "步法", "发力", "握拍", "启动", "启动步", "米字步", "交叉步", "并步",
+    "手法", "训练", "练习", "发球", "接发", "站位", "轮转", "步伐", "体能",
+    "如何打", "怎么打", "怎么练",
+)
+# 打法风格词：直接视为选品信号（杀球=进攻型→头重拍等），优先级高于 GENERAL/教学判定。
+# 从 GENERAL / CONTEXT 中拆出，避免被误归为羽球周边知识而掐断推荐链路。
+BADMINTON_PLAYSTYLE_KEYWORDS = (
+    "杀球", "吊球", "高远球", "搓球", "勾对角", "上网",
+    "进攻", "防守", "控球", "平抽", "拉吊", "网前",
 )
 BADMINTON_CONTEXT_WORDS = (
-    "羽毛球", "单打", "双打", "混双", "后场", "前场", "中场", "网前", "平抽", "防守",
-    "进攻", "控球", "控制", "连贯", "挥拍", "回球", "拉吊", "战术", "赢球",
+    "羽毛球", "单打", "双打", "混双", "后场", "前场", "中场", "连贯", "挥拍", "回球",
+    "控制", "战术", "赢球",
 )
 BADMINTON_EQUIPMENT_TERMS = (
     "球拍", "拍子", "羽拍", "这支拍", "这把拍", "进攻拍", "速度拍", "防守拍", "头重拍", "头轻拍",
@@ -382,20 +393,31 @@ def classify_question_scope(text: str) -> str:
     if any(keyword in normalized for keyword in MEDICAL_BOUNDARY_TERMS) and not has_equipment_phrase:
         return "medical_boundary"
 
-    has_badminton_general = any(keyword in normalized for keyword in BADMINTON_GENERAL_KEYWORDS)
-    has_badminton_context = any(keyword in normalized for keyword in BADMINTON_CONTEXT_WORDS)
-    if has_badminton_general or ("羽毛球" in normalized and "装备" not in normalized) or (has_badminton_context and "怎么" in normalized):
-        return "badminton_general"
-
+    # 装备选品信号优先于「纯技术动作词」判断：
+    # ① 打法风格词(杀球/吊球/高远球等)=选品信号，直接触发推荐（用户决策：杀球=选拍）；
+    # ② 预算词也是选品信号；二者均优先于 GENERAL/教学判定，避免推荐链路被短路。
+    has_playstyle = any(kw in normalized for kw in BADMINTON_PLAYSTYLE_KEYWORDS)
+    has_budget_signal = any(kw in normalized for kw in (
+        "预算", "元以内", "价位", "多少钱", "价格", "块钱", "块以内",
+    ))
     has_equipment_signal = (
         infer_category(normalized) is not None
         or classify_guide_intent(normalized) is not None
         or bool(extract_model_tokens(normalized))
         or any(keyword in normalized for keywords in CATEGORY_KEYWORDS.values() for keyword in keywords)
-        or any(keyword in normalized for keyword in BADMINTON_EQUIPMENT_TERMS)
+        or has_equipment_phrase
+        or has_budget_signal
+        or has_playstyle
     )
     if has_equipment_signal:
         return "equipment"
+
+    has_badminton_general = any(keyword in normalized for keyword in BADMINTON_GENERAL_KEYWORDS)
+    has_badminton_context = any(keyword in normalized for keyword in BADMINTON_CONTEXT_WORDS)
+    # 纯教学/训练问（怎么打/发力/步法）且无打法风格词时，才归羽球周边；
+    # 含打法风格词(杀球等)即使带"怎么/发力"也优先判选品。
+    if (has_badminton_general or ("羽毛球" in normalized and "装备" not in normalized) or (has_badminton_context and "怎么" in normalized)) and not has_playstyle:
+        return "badminton_general"
 
     if has_badminton_context:
         return "badminton_general"
@@ -463,7 +485,7 @@ def _split_model_sections(text: str) -> List[KnowledgeSection]:
 
 
 def split_knowledge_sections(text: str) -> List[KnowledgeSection]:
-    """优先按编号 FAQ 或型号/系列小节切分；否则交给外层递归切分。"""
+    """优先按编号 FAQ / 常见问题(Q编号)标题 / 型号或系列小节切分；否则交给外层递归切分。"""
     lines = (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
     sections: List[KnowledgeSection] = []
     current_title = ""
@@ -477,6 +499,15 @@ def split_knowledge_sections(text: str) -> List[KnowledgeSection]:
                 if content:
                     sections.append(KnowledgeSection(current_title, content))
             current_title = match.group(2).strip()
+            current_lines = [line.strip()]
+        elif FAQ_TITLE_RE.match(line):
+            faq_match = FAQ_TITLE_RE.match(line)
+            if current_title:
+                content = "\n".join(current_lines).strip()
+                if content:
+                    sections.append(KnowledgeSection(current_title, content))
+            # 段标题取问题正文（含可检索关键词），原始 Q 编号标题行保留在段首内容里
+            current_title = faq_match.group(1).strip()
             current_lines = [line.strip()]
         elif current_title:
             current_lines.append(line)

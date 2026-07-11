@@ -60,6 +60,15 @@ CHROMA_DIR = BASE_DIR / "chroma_db"
 CHROMA_DIR.mkdir(parents=True, exist_ok=True)
 CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "badminton_rag_knowledge")
 
+# ---- 向量存储模式 ----
+# VECTOR_STORE_LOCAL=1：主进程不导入/不使用 chromadb，检索与入库只走本地 npz 向量
+# 快照（chroma_db/vector_cache.npz + vector_cache_meta.json）。用于本机 Windows 上
+# chromadb 1.x HNSW compactor 原生崩溃、向量索引已损坏、或需要稳定运行且不依赖 Chroma
+# 的场景。置 0（默认）则走 chroma_runner 子进程隔离路径（需可用的 Chroma 版本）。
+VECTOR_STORE_LOCAL = os.getenv("VECTOR_STORE_LOCAL", "0").lower() in {
+    "1", "true", "yes", "on"
+}
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv(
     "OPENAI_BASE_URL",

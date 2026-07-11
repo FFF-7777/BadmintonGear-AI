@@ -17,6 +17,7 @@
 | **Embedding** | 阿里云百炼 `text-embedding-v4` | 维度 2048 |
 | **生成模型** | 阿里云百炼 `qwen3.7-plus` | 对话/选品生成，`temperature=0.2` |
 | **重排模型** | 阿里云百炼 `qwen3-rerank` | Cross-Encoder 语义重排 |
+| **索引切块** | RecursiveCharacterTextSplitter | 知识库先按 FAQ/编号/型号标题预切分→块内 CHUNK_SIZE=1000 / OVERLAP=120（按字符）递归切→短块(<MIN 180)合并(≤MAX 1400)；改切块须重向量化 |
 | **评测** | 自研黄金集 + DeepEval | 确定性打分主指标 + 独立 LLM 裁判佐证 |
 | **工程化** | Docker / docker-compose / GitHub Actions CI | 容器化 + 自动构建测试 |
 | **质量门禁** | pytest / mypy / ruff / ESLint / Prettier / Vitest | 后端 37 + 前端 9 测试 |

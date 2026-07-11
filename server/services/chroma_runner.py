@@ -61,21 +61,8 @@ def _wipe_chroma_and_retry(handler, payload: dict, max_retries: int = 1) -> dict
             last_err = f"{type(exc).__name__}: {exc}"
             if not _is_hnsw_error(last_err) or attempt >= max_retries:
                 raise
-            # 检测到 HNSW 损坏 → 清理并重试
-            sys.stderr.write(
-                f"[chroma_runner] HNSW index corruption detected, "
-                f"wiping CHROMA_DIR and retrying ({attempt + 1}/{max_retries})...\n"
-            )
-            try:
-                shutil.rmtree(str(CHROMA_DIR), ignore_errors=True)
-                CHROMA_DIR.mkdir(parents=True, exist_ok=True)
-                # 清除 vector_store 缓存（如果已导入的话）
-                import services.vector_store as _vs_mod
-                if hasattr(_vs_mod, 'vector_store_service'):
-                    _vs_mod.vector_store_service._vectorstore = None
-            except Exception as wipe_err:
-                sys.stderr.write(f"[chroma_runner] Failed to wipe chroma_db: {wipe_err}\n")
-                raise  # 清理失败就直接抛原始错误
+            # [RECOVERY] 临时禁用自动清空整个向量库，避免 HNSW 误删已恢复数据；恢复后须还原本函数。
+            raise
 
     raise RuntimeError(f"Max retries exceeded for HNSW error: {last_err}")
 

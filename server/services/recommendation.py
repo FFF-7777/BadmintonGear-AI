@@ -437,9 +437,9 @@ def _apply_hard_rules(product: Product, constraints: GuideConstraints) -> bool:
     """硬性过滤：返回 False 表示应排除该商品。"""
     specs = product.specs or {}
 
-    # 新手不推超硬/硬中杆球拍
+    # 新手不推特硬(extra-stiff)中杆球拍；stiff 中杆保留为 backup（用户明确要进攻时不应全排除）
     if product.category_id == 1 and constraints.level == "beginner":
-        if specs.get("shaft_flex") in ("stiff", "extra-stiff"):
+        if specs.get("shaft_flex") == "extra-stiff":
             return False
 
     # 膝盖敏感不推低缓震球鞋
