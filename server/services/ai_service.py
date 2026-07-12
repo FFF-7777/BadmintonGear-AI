@@ -267,7 +267,7 @@ class AIService:
            有候选（含 backup）就必须输出具体可参考型号——用户来问就是想要推荐，不要以"不够匹配"为由拒绝。
            **绝对禁止**在候选列表非空时使用「初步判断/还需要确认的信息/保守选择方向/暂不建议」等保守拒答格式；
            候选中的「推荐角色」为 backup 时：照样用推荐四段式输出，将 backup 标注为"参考选项/备选"而非"首选"，并在注意事项中说明其不完全匹配之处（如来源置信度、参数缺失等）。
-           仅当候选列表完全为空（连一个 backup 都没有）时，才说明"当前候选库中没有足够匹配的具体型号"并给出选购方向。不得编造型号。
+           候选列表完全为空（连一个 backup 都没有）时，直接给出选购方向，不得编造型号。
 
         3. 价格只作为预算和选品对比参考。
            不得声称是实时售价、最低价、到手价、历史低价或平台成交价。
@@ -899,12 +899,14 @@ class AIService:
         return msg
 
     @staticmethod
-    def _select_answer_mode(analysis, context_docs, recommended) -> str:
+    def _select_answer_mode(analysis, context_docs, recommended, question: str = "") -> str:
         """在 chat()/chat_stream() 间共享的"选答案分支"判定，避免两套 if/elif 漂移。
 
         返回分支名：badminton_general / missing_model / rag / fallback。
         注意：各分支的"执行"仍分同步(chat)/异步流(chat_stream)两版，这里只统一判定逻辑。
         """
+        if AIService._is_professional_same_model_pressure(question):
+            return "prestige_caution"
         if getattr(analysis, "scope", "") == "badminton_general" and not context_docs:
             return "badminton_general"
         if getattr(analysis, "model_tokens", None) and not context_docs and not recommended:
@@ -914,6 +916,32 @@ class AIService:
         if context_docs or recommended:
             return "rag"
         return "fallback"
+
+    @staticmethod
+    def _is_professional_same_model_pressure(question: str) -> bool:
+        normalized = (question or "").replace(" ", "")
+        return (
+            any(term in normalized for term in ("职业同款", "专业同款", "冠军同款"))
+            and any(term in normalized for term in ("新手", "入门", "初学"))
+            and any(term in normalized for term in ("买吗", "该买", "面子", "盲买"))
+        )
+
+    @staticmethod
+    def _professional_same_model_caution_answer() -> str:
+        return (
+            "## 推荐结论\n\n"
+            "不建议新手为了面子盲目购买职业同款。职业球员使用的型号通常更强调直接反馈和进攻上限，"
+            "不代表对新手更省力、更舒适，也不代表价格越高越适合。\n\n"
+            "## 为什么不建议盲买\n\n"
+            "新手更需要容错、甜区友好和容易借力。高门槛职业同款常见偏硬中杆、明显头重或较高挥重，"
+            "动作和力量不足时可能打不动、连续挥拍更累，甚至放大手腕和肩肘负担。\n\n"
+            "## 保守选择方向\n\n"
+            "优先看 4U/5U、均衡或微头重、中杆适中或偏软、甜区和容错较好的球拍。"
+            "先根据水平、单双打场景和身体负担选参数，再决定具体型号。\n\n"
+            "## 替代方案\n\n"
+            "如果确实喜欢职业同款的外观或系列，可以先看同系列 PLAY、GAME 或更低门槛版本；"
+            "购买前核对重量、中杆硬度和建议磅数，不按职业标签或名气直接下结论。"
+        )
 
     # ------------------------------------------------------------------
     # 跨会话用户画像（P1-4）：持久化在 t_user_profile，不触碰知识库向量库。
@@ -1141,9 +1169,12 @@ class AIService:
             )
             context_docs = search_result.documents
             sources = self._build_sources(context_docs)
-            mode = self._select_answer_mode(analysis, context_docs, recommended)
+            mode = self._select_answer_mode(analysis, context_docs, recommended, message)
             if mode == "badminton_general":
                 answer = self._handle_badminton_general(message, history)
+            elif mode == "prestige_caution":
+                answer = self._professional_same_model_caution_answer()
+                recommended = []
             elif mode == "missing_model":
                 answer = self._missing_model_answer(message, analysis, recommended)
             elif mode == "rag":
@@ -1303,9 +1334,14 @@ class AIService:
             )
 
             full_answer = ""
-            mode = self._select_answer_mode(analysis, context_docs, recommended)
+            mode = self._select_answer_mode(analysis, context_docs, recommended, message)
             if mode == "badminton_general":
                 full_answer = self._handle_badminton_general(message, history)
+                async for msg in _yield_content_chunks(full_answer):
+                    yield json.dumps(msg, ensure_ascii=False)
+            elif mode == "prestige_caution":
+                full_answer = self._professional_same_model_caution_answer()
+                recommended = []
                 async for msg in _yield_content_chunks(full_answer):
                     yield json.dumps(msg, ensure_ascii=False)
             elif mode == "missing_model":

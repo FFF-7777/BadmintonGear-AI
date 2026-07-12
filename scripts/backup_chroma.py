@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import os
 import shutil
 import sqlite3
 import sys
@@ -35,14 +36,34 @@ def sqlite_integrity(sqlite_path: Path) -> str:
         return f"error: {exc}"
 
 
-def count_cache(chroma_dir: Path) -> tuple[int, int]:
+def inspect_cache(chroma_dir: Path) -> dict:
     npz_path = chroma_dir / "vector_cache.npz"
     meta_path = chroma_dir / "vector_cache_meta.json"
     if not npz_path.exists() or not meta_path.exists():
-        return -1, -1
+        return {"vectors": -1, "records": -1, "ids": -1, "unique_ids": -1, "dimensions": -1, "finite": False}
     vectors = np.load(npz_path, allow_pickle=False)
     records = json.loads(meta_path.read_text(encoding="utf-8"))
-    return int(vectors["embeddings"].shape[0]), len(records)
+    embeddings = vectors["embeddings"]
+    ids = [str(item) for item in vectors["ids"].tolist()]
+    return {
+        "vectors": int(embeddings.shape[0]),
+        "records": len(records),
+        "ids": len(ids),
+        "unique_ids": len(set(ids)),
+        "dimensions": int(embeddings.shape[1]) if embeddings.ndim == 2 else -1,
+        "finite": bool(np.isfinite(embeddings).all()),
+    }
+
+
+def local_vector_mode() -> bool:
+    value = os.getenv("VECTOR_STORE_LOCAL", "").strip()
+    env_path = ROOT / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8-sig").splitlines():
+            if line.strip().startswith("VECTOR_STORE_LOCAL="):
+                value = line.split("=", 1)[1].strip()
+                break
+    return value.lower() in {"1", "true", "yes", "on"}
 
 
 def directory_stats(path: Path) -> tuple[int, int]:
@@ -78,21 +99,47 @@ def main() -> None:
         print("        请先修复或确认后再加 --force 备份。")
         sys.exit(1)
 
-    cache_vectors, cache_records = count_cache(SRC)
-    if (cache_vectors != embedding_count or cache_records != embedding_count) and not force:
-        print("[错误] 本地向量快照不完整，拒绝备份。")
-        print(f"        embeddings={embedding_count}, cache_vectors={cache_vectors}, cache_records={cache_records}")
-        print("        请重新向量化生成 vector_cache，再备份。")
+    cache = inspect_cache(SRC)
+    cache_consistent = (
+        cache["vectors"] > 0
+        and cache["vectors"] == cache["records"] == cache["ids"] == cache["unique_ids"]
+        and cache["dimensions"] > 0
+        and cache["finite"]
+    )
+    is_local = local_vector_mode()
+    if is_local and not cache_consistent and not force:
+        print(f"[错误] NPZ 主向量库校验失败: {cache}")
+        sys.exit(1)
+    if not is_local and (
+        not cache_consistent or cache["vectors"] != embedding_count
+    ) and not force:
+        print("[错误] Chroma 与本地向量快照不一致，拒绝备份。")
+        print(f"        embeddings={embedding_count}, cache={cache}")
         sys.exit(1)
 
     timestamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     dest = DEST_PARENT / f"chroma_db_{timestamp}"
     DEST_PARENT.mkdir(parents=True, exist_ok=True)
     shutil.copytree(SRC, dest)
+    (dest / "backup_manifest.json").write_text(
+        json.dumps(
+            {
+                "created_at": timestamp,
+                "primary_store": "npz" if is_local else "chroma",
+                "chroma_embeddings": embedding_count,
+                "chroma_integrity": integrity,
+                "vector_cache": cache,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
     total_size, file_count = directory_stats(dest)
     print(f"[信息] Chroma embeddings: {embedding_count}")
-    print(f"[信息] Vector cache records: {cache_records}")
+    print(f"[信息] 主向量库: {'NPZ' if is_local else 'Chroma'}")
+    print(f"[信息] Vector cache records: {cache['records']}, dimensions: {cache['dimensions']}")
     print(f"[完成] 已备份到: {dest}")
     print(f"        大小: {total_size / 1024 / 1024:.1f} MB，文件数: {file_count}")
     print("        恢复方法: 停后端 -> 删 server/chroma_db/ -> 把本目录复制回去 -> 重启后端")

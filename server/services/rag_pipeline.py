@@ -11,10 +11,10 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
 CATEGORY_KEYWORDS = {
-    "racket": ("球拍", "拍子", "中杆", "平衡点", "拍框", "甜区", "挥重"),
-    "string": ("球线", "穿线", "线径", "磅数", "弹性", "耐打", "掉磅"),
-    "shuttle": ("羽毛球", "鹅毛", "鸭毛", "球速", "耐打", "飞行", "稳定"),
-    "shoes": ("球鞋", "缓震", "支撑", "防滑", "脚型", "宽脚", "膝盖"),
+    "racket": ("球拍", "拍子", "中杆", "平衡点", "拍框", "甜区", "挥重", "握柄"),
+    "string": ("球线", "拍线", "穿线", "线径", "磅数", "掉磅"),
+    "shuttle": ("羽毛球", "鹅毛", "鸭毛", "球速"),
+    "shoes": ("球鞋", "羽毛球鞋", "鞋子", "脚型", "宽脚"),
     "brand": ("品牌", "尤尼克斯", "李宁", "胜利", "川崎", "薰风", "凯胜"),
     "selection": ("推荐", "对比", "怎么选", "适合", "预算", "新手", "进阶"),
 }
@@ -47,6 +47,9 @@ CHINESE_RE = re.compile(r"[\u4e00-\u9fff]+")
 ASCII_MODEL_RE = re.compile(
     r"(?i)(?<![A-Za-z0-9])(?:astrox|arcsaber|nanoflare|auraspeed|jetspeed|halbertec|ax|arcs|nf|as|js|tk|hx|pc)\s*[- ]?\d{1,4}(?:\s*(?:pro|tour|game|play|bp|lcw)){0,2}[a-z0-9]{0,2}(?![A-Za-z0-9])"
 )
+TURBO_MODEL_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9])turbocharging\s*[- ]?n\s*[- ]?\d{1,3}(?![A-Za-z0-9])"
+)
 DIGIT_MODEL_RE = re.compile(
     r"(?i)(?<![A-Za-z0-9])\d{2,4}\s*(?:pro|tour|game|play|bp|lcw|[a-z]{1,3}\d{0,2})(?![A-Za-z0-9])"
 )
@@ -71,7 +74,7 @@ BADMINTON_CONTEXT_WORDS = (
     "控制", "战术", "赢球",
 )
 BADMINTON_EQUIPMENT_TERMS = (
-    "球拍", "拍子", "羽拍", "这支拍", "这把拍", "进攻拍", "速度拍", "防守拍", "头重拍", "头轻拍",
+    "球拍", "拍子", "羽拍", "这支拍", "这把拍", "儿童拍", "成人拍", "入门拍", "进攻拍", "速度拍", "防守拍", "头重拍", "头轻拍",
     "3U", "4U", "5U", "6U", "头重", "头轻", "均衡", "平衡点", "挥重", "中杆", "硬杆", "软杆",
     "甜区", "拍框", "磅数", "拉线", "高磅", "低磅", "PRO", "TOUR", "GAME", "PLAY",
 )
@@ -186,6 +189,7 @@ def infer_category(text: str) -> Optional[str]:
     scores = {
         category: sum(1 for keyword in keywords if keyword in text)
         for category, keywords in CATEGORY_KEYWORDS.items()
+        if category in {"racket", "string", "shuttle", "shoes"}
     }
     best_category, best_score = max(scores.items(), key=lambda item: item[1])
     if best_score == 0:
@@ -230,7 +234,7 @@ def extract_model_mentions(text: str) -> List[str]:
     """抽取问题里真正出现过的型号提及，不展开别名。"""
     source = normalize_text(text)
     matches: List[Tuple[int, int, str]] = []
-    for pattern in (ASCII_MODEL_RE, DIGIT_MODEL_RE, CHINESE_MODEL_RE):
+    for pattern in (ASCII_MODEL_RE, TURBO_MODEL_RE, DIGIT_MODEL_RE, CHINESE_MODEL_RE):
         matches.extend((match.start(), match.end(), match.group(0)) for match in pattern.finditer(source))
 
     mentions: List[str] = []
@@ -279,8 +283,23 @@ def extract_compare_targets(question: str) -> List[str]:
         return model_mentions[:2]
 
     normalized = normalize_text(question)
-    if not any(keyword in normalized for keyword in ("对比", "比较", "区别", "哪个好", "差别", "还是")):
+    if not any(keyword in normalized for keyword in ("对比", "比较", "相比", "区别", "哪个好", "差别", "还是", "混着")):
         return []
+
+    compared = re.search(r"(.+?)和(.+?)相比", normalized)
+    if compared:
+        targets = []
+        for segment in compared.groups():
+            mentions = extract_model_mentions(segment)
+            quoted = re.search(r"[“\"]([^”\"]+)[”\"]", segment)
+            targets.append(
+                mentions[0]
+                if mentions
+                else quoted.group(1).strip()
+                if quoted
+                else segment.strip(" ，,？?、“”\"")
+            )
+        return list(dict.fromkeys(filter(None, targets)))[:2]
 
     split = COMPARE_SPLIT_RE.split(normalized)
     if len(split) < 2:
@@ -292,7 +311,12 @@ def extract_compare_targets(question: str) -> List[str]:
         if mentions:
             targets.append(mentions[0])
             continue
-        cleaned = re.sub(r"(请|帮我|想问|我想|对比|比较|区别|哪个好|差别|怎么样|适合谁|适合我)$", "", segment).strip()
+        quoted = re.search(r"[“\"]([^”\"]+)[”\"]", segment)
+        if quoted:
+            targets.append(quoted.group(1).strip())
+            continue
+        cleaned = re.sub(r"(?:能)?混着买吗[？?]?$", "", segment).strip()
+        cleaned = re.sub(r"(请|帮我|想问|我想|对比|比较|相比|区别|哪个好|差别|怎么样|适合谁|适合我)[？?]?$", "", cleaned).strip()
         cleaned = re.sub(r"^(请|帮我|想问|我想|对比|比较)", "", cleaned).strip()
         if cleaned:
             targets.append(cleaned)
@@ -393,33 +417,30 @@ def classify_question_scope(text: str) -> str:
     if any(keyword in normalized for keyword in MEDICAL_BOUNDARY_TERMS) and not has_equipment_phrase:
         return "medical_boundary"
 
-    # 装备选品信号优先于「纯技术动作词」判断：
-    # ① 打法风格词(杀球/吊球/高远球等)=选品信号，直接触发推荐（用户决策：杀球=选拍）；
-    # ② 预算词也是选品信号；二者均优先于 GENERAL/教学判定，避免推荐链路被短路。
+    # 打法偏好属于选拍画像；询问“怎么发力/怎么赢球”则仍是训练或战术问题。
     has_playstyle = any(kw in normalized for kw in BADMINTON_PLAYSTYLE_KEYWORDS)
+    has_playstyle_preference = has_playstyle and any(kw in normalized for kw in (
+        "喜欢", "偏好", "偏向", "想要", "想打", "打法", "为主", "主打",
+    ))
     has_budget_signal = any(kw in normalized for kw in (
         "预算", "元以内", "价位", "多少钱", "价格", "块钱", "块以内",
     ))
+    guide_intent = classify_guide_intent(normalized)
+    if guide_intent == "compare" and "比较好" in normalized:
+        guide_intent = None
     has_equipment_signal = (
-        infer_category(normalized) is not None
-        or classify_guide_intent(normalized) is not None
+        guide_intent is not None
         or bool(extract_model_tokens(normalized))
-        or any(keyword in normalized for keywords in CATEGORY_KEYWORDS.values() for keyword in keywords)
         or has_equipment_phrase
         or has_budget_signal
-        or has_playstyle
+        or has_playstyle_preference
     )
     if has_equipment_signal:
         return "equipment"
 
     has_badminton_general = any(keyword in normalized for keyword in BADMINTON_GENERAL_KEYWORDS)
     has_badminton_context = any(keyword in normalized for keyword in BADMINTON_CONTEXT_WORDS)
-    # 纯教学/训练问（怎么打/发力/步法）且无打法风格词时，才归羽球周边；
-    # 含打法风格词(杀球等)即使带"怎么/发力"也优先判选品。
-    if (has_badminton_general or ("羽毛球" in normalized and "装备" not in normalized) or (has_badminton_context and "怎么" in normalized)) and not has_playstyle:
-        return "badminton_general"
-
-    if has_badminton_context:
+    if has_badminton_general or ("羽毛球" in normalized and "装备" not in normalized) or has_badminton_context or has_playstyle:
         return "badminton_general"
 
     if any(keyword in lower for keyword in ("weather", "python", "股票", "天气", "吃什么", "旅游", "新闻")):
@@ -723,9 +744,9 @@ def is_greeting_or_chitchat(text: str) -> bool:
 # ============================================================================
 
 GUIDE_INTENT_KEYWORDS = {
-    "single_recommend": ("推荐", "买什么", "选什么", "适合我", "推荐一下", "有什么好", "怎么选", "选个", "配吗"),
+    "single_recommend": ("推荐", "买什么", "选什么", "该买吗", "适合我", "推荐一下", "有什么好", "怎么选", "选个", "配吗"),
     "bundle_recommend": ("一套", "配齐", "组合", "怎么配", "搭配", "全配", "整套", "怎么买"),
-    "compare": ("对比", "比较", "哪个好", "区别", "和什么比", "差别", "选哪个"),
+    "compare": ("对比", "比较", "相比", "哪个好", "区别", "和什么比", "差别", "选哪个", "混着买吗"),
     "param_explain": ("什么意思", "是什么意思", "参数", "磅数", "平衡点", "中杆", "U数", "球速", "线径", "材质", "硬度"),
     "upgrade": ("升级", "提升", "想换", "进阶", "换拍", "怎么改"),
     "avoid": ("避坑", "不要买", "不建议", "新手不要", "别买", "坑", "雷"),

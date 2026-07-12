@@ -55,6 +55,9 @@ SOURCE_ALIASES = {
 }
 
 FORBIDDEN_NEGATION_MARKERS = ("不", "并不", "不是", "不能", "不要", "避免", "所谓", "不是说")
+FORBIDDEN_ALLOWED_CONTEXTS = {
+    "下单": ("下单前", "下单时"),
+}
 
 
 def marker_hit(answer: str, marker: str) -> bool:
@@ -79,7 +82,11 @@ def forbidden_hits(answer: str, terms: List[str]) -> List[str]:
             if index < 0:
                 break
             window = low[max(0, index - 8):index + len(term_low) + 4]
-            if not any(marker.lower() in window for marker in FORBIDDEN_NEGATION_MARKERS):
+            allowed_context = any(
+                phrase.lower() in window
+                for phrase in FORBIDDEN_ALLOWED_CONTEXTS.get(term, ())
+            )
+            if not allowed_context and not any(marker.lower() in window for marker in FORBIDDEN_NEGATION_MARKERS):
                 matched = True
                 break
             start = index + len(term_low)

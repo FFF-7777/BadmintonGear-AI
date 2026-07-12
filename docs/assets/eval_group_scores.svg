@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<rect width="760" height="380" fill="#ffffff"/>
+<text x="40" y="30" font-size="20" font-weight="700" fill="#1a1a1a">黄金集评测 · 分组得分</text>
+<text x="740" y="30" font-size="13" fill="#888" text-anchor="end">64 确定性用例 · 总分 0.8816</text>
+<line x1="30" y1="320" x2="750" y2="320" stroke="#ccc" stroke-width="1"/>
+<rect x="40" y="70" width="78" height="250" rx="5" fill="#2b6cb0"/>
+<text x="79.0" y="62" font-size="13" font-weight="600" fill="#222" text-anchor="middle">1.000</text>
+<text x="79.0" y="338" font-size="11" fill="#555" text-anchor="middle">routing</text>
+<rect x="140.33333333333331" y="93" width="78" height="227" rx="5" fill="#2b6cb0"/>
+<text x="179.33333333333331" y="85" font-size="13" font-weight="600" fill="#222" text-anchor="middle">0.909</text>
+<text x="179.33333333333331" y="338" font-size="11" fill="#555" text-anchor="middle">general</text>
+<text x="179.33333333333331" y="352" font-size="11" fill="#555" text-anchor="middle">training</text>
+<text x="179.33333333333331" y="366" font-size="11" fill="#555" text-anchor="middle">safety</text>
+<rect x="240.66666666666663" y="96" width="78" height="224" rx="5" fill="#2b6cb0"/>
+<text x="279.66666666666663" y="88" font-size="13" font-weight="600" fill="#222" text-anchor="middle">0.898</text>
+<text x="279.66666666666663" y="338" font-size="11" fill="#555" text-anchor="middle">recommendat</text>
+<text x="279.66666666666663" y="352" font-size="11" fill="#555" text-anchor="middle">ion</text>
+<rect x="340.99999999999994" y="98" width="78" height="222" rx="5" fill="#2b6cb0"/>
+<text x="379.99999999999994" y="90" font-size="13" font-weight="600" fill="#222" text-anchor="middle">0.891</text>
+<text x="379.99999999999994" y="338" font-size="11" fill="#555" text-anchor="middle">grounding</text>
+<text x="379.99999999999994" y="352" font-size="11" fill="#555" text-anchor="middle">policy</text>
+<rect x="441.33333333333326" y="106" width="78" height="214" rx="5" fill="#2b6cb0"/>
+<text x="480.33333333333326" y="98" font-size="13" font-weight="600" fill="#222" text-anchor="middle">0.856</text>
+<text x="480.33333333333326" y="338" font-size="11" fill="#555" text-anchor="middle">parameter</text>
+<rect x="541.6666666666666" y="117" width="78" height="203" rx="5" fill="#2b6cb0"/>
+<text x="580.6666666666666" y="109" font-size="13" font-weight="600" fill="#222" text-anchor="middle">0.812</text>
+<text x="580.6666666666666" y="338" font-size="11" fill="#555" text-anchor="middle">comparison</text>
+<rect x="642.0" y="126" width="78" height="194" rx="5" fill="#2b6cb0"/>
+<text x="681.0" y="118" font-size="13" font-weight="600" fill="#222" text-anchor="middle">0.777</text>
+<text x="681.0" y="338" font-size="11" fill="#555" text-anchor="middle">product</text>
+<text x="681.0" y="352" font-size="11" fill="#555" text-anchor="middle">fact</text>
+<line x1="30" y1="100" x2="750" y2="100" stroke="#d0021b" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="746" y="94" font-size="12" font-weight="700" fill="#d0021b" text-anchor="end">overall 0.8816</text>
+</svg>

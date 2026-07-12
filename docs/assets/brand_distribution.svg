@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="300" viewBox="0 0 760 300" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<rect width="760" height="300" fill="#ffffff"/>
+<text x="150" y="34" font-size="20" font-weight="700" fill="#1a1a1a">商品库品牌分布</text>
+<text x="740" y="34" font-size="13" fill="#888" text-anchor="end">共 1165 件 SKU</text>
+<text x="138" y="91.0" font-size="14" fill="#333" text-anchor="end">尤尼克斯 YONEX</text>
+<rect x="150" y="64" width="480" height="44" rx="6" fill="#0a6ed1"/>
+<text x="640" y="91.0" font-size="14" font-weight="600" fill="#222">723  (62.1%)</text>
+<text x="138" y="165.0" font-size="14" fill="#333" text-anchor="end">李宁 LI-NING</text>
+<rect x="150" y="138" width="288" height="44" rx="6" fill="#d0021b"/>
+<text x="448" y="165.0" font-size="14" font-weight="600" fill="#222">435  (37.3%)</text>
+<text x="138" y="239.0" font-size="14" fill="#333" text-anchor="end">威克多 VICTOR</text>
+<rect x="150" y="212" width="4" height="44" rx="6" fill="#2e8b57"/>
+<text x="164" y="239.0" font-size="14" font-weight="600" fill="#222">7  (0.6%)</text>
+</svg>

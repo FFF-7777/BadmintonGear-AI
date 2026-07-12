@@ -98,19 +98,17 @@ export async function ensureToken() {
       setStored(TOKEN_KEY, token)
       return token
     }
-  } catch (e) {
+  } catch {
+    // 登录失败后进入注册流程。
   }
 
   // ── Step 4: 登录失败 → 注册新用户 ──
-  let registered = false
   try {
-    const regRes = await http.post('/auth/user/register', {
+    await http.post('/auth/user/register', {
       username, password, type: 'user', nickname: '访客',
     })
-    registered = true
   } catch (e) {
     const status = e?.response?.status
-    const msg = e?.response?.data?.msg || e.message
 
     // 422=参数问题(用户名格式/太长等) → 换名重试
     if (status === 422) {
@@ -118,8 +116,8 @@ export async function ensureToken() {
       setStored(USER_KEY, username)
       try {
         await http.post('/auth/user/register', { username, password, type: 'user', nickname: '访客' })
-        registered = true
-      } catch (e2) {
+      } catch {
+        // 由后续登录统一返回最终认证错误。
       }
     }
     // 400=用户名已存在（但登录却失败了？可能是密码不一致，忽略）
@@ -151,7 +149,8 @@ export async function ensureToken() {
           setStored(TOKEN_KEY, t)
           return t
         }
-      } catch (ignored) {
+      } catch {
+        // 尝试下一个随机访客账号。
       }
     }
     throw new Error('认证失败: ' + (typeof detail === 'string' ? detail.slice(0, 200) : JSON.stringify(detail)))
@@ -252,10 +251,11 @@ export function chatStream(message, sessionId, handlers = {}) {
       case 'session_id':
         handlers.onSession?.(data.session_id)
         break
-      case 'content':
+      case 'content': {
         const c = data.content || ''
         handlers.onContent?.(c)
         break
+      }
       case 'sources':
         handlers.onSources?.(data.sources || [])
         break

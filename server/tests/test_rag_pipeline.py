@@ -6,6 +6,7 @@ from services.rag_pipeline import (
     classify_question_scope,
     extract_constraints,
     extract_model_mentions,
+    infer_category,
     reciprocal_rank_fusion,
     rerank_candidates,
     rewrite_query_for_retrieval,
@@ -42,6 +43,10 @@ class QueryAnalysisTests(unittest.TestCase):
             extract_model_mentions("ASTROX 99 LCW TOUR vs ASTROX 99 PLAY"),
             ["AX99LCWTOUR", "AX99PLAY"],
         )
+        self.assertEqual(
+            extract_model_mentions("李宁 TURBOCHARGING N7 和新手入门拍相比"),
+            ["TURBOCHARGINGN7"],
+        )
 
     def test_single_model_query_does_not_become_compare(self):
         analysis = analyze_query("65z3适合宽脚吗")
@@ -66,6 +71,39 @@ class QueryAnalysisTests(unittest.TestCase):
 
     def test_tactical_badminton_question_is_general_scope(self):
         self.assertEqual(classify_question_scope("单打拉吊控制型主要靠什么赢球？"), "badminton_general")
+        self.assertEqual(classify_question_scope("杀球怎么发力？"), "badminton_general")
+
+    def test_playstyle_preference_is_equipment_scope(self):
+        self.assertEqual(classify_question_scope("我喜欢杀球"), "equipment")
+        self.assertEqual(classify_question_scope("我以进攻打法为主"), "equipment")
+
+    def test_professional_same_model_question_is_equipment_scope(self):
+        question = "我是新手，但朋友说职业同款才有面子，我该买吗？"
+        self.assertEqual(
+            classify_question_scope(question),
+            "equipment",
+        )
+        self.assertEqual(
+            AIService._select_answer_mode(analyze_query(question), [], [], question),
+            "prestige_caution",
+        )
+        answer = AIService._professional_same_model_caution_answer()
+        for term in ("新手", "不建议", "职业同款", "盲目", "4U", "5U", "偏软", "容错", "舒适"):
+            self.assertIn(term, answer)
+
+    def test_generic_racket_comparisons_extract_both_targets(self):
+        n7 = analyze_query("李宁 TURBOCHARGING N7 和新手入门拍相比，门槛高在哪里？")
+        child = analyze_query("儿童拍“羽航员”和成人新手拍能混着买吗？")
+
+        self.assertEqual(n7.scope, "equipment")
+        self.assertEqual(n7.compare_targets, ["TURBOCHARGINGN7", "新手入门拍"])
+        self.assertEqual(child.scope, "equipment")
+        self.assertEqual(child.compare_targets, ["羽航员", "成人新手拍"])
+
+    def test_generic_racket_text_is_not_mislabeled_as_shuttle(self):
+        self.assertEqual(infer_category("握柄对打球的影响，支撑感强，重杀稳定"), "racket")
+        self.assertNotEqual(infer_category("中端价位，表现稳定"), "shuttle")
+        self.assertIsNone(infer_category("新手推荐和品牌选择"))
 
     def test_policy_boundary_scopes_are_not_offtopic(self):
         self.assertEqual(classify_question_scope("这把拍你能帮我下单并保证明天发货吗？"), "commerce_boundary")

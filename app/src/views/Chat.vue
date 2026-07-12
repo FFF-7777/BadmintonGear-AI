@@ -67,8 +67,8 @@
 
             <div class="message-bubble" :class="m.role === 'user' ? 'message-bubble--user' : 'message-bubble--assistant'">
               <div v-if="m.role === 'user'" class="message-plain">{{ m.content }}</div>
-              <!-- 流式中的消息用独立 streamingText ref 直接绑定，保证逐字渲染可靠 -->
-              <MarkdownView v-else-if="m.streaming && m.id === streamState.aiId" :content="streamingText" />
+              <!-- 生成中保持稳定文本 DOM；完成后再一次性解析 Markdown。 -->
+              <div v-else-if="m.streaming && m.id === streamState.aiId" class="message-stream-text">{{ streamingText }}</div>
               <MarkdownView v-else :content="m.content" />
             </div>
 
@@ -176,7 +176,7 @@ const showSuggestions = computed(() => messages.value.length === 0 && !loading.v
 
 function resetChat() {
   closeSocket()
-  if (streamRafId) { cancelAnimationFrame(streamRafId); streamRafId = null }
+  if (streamFlushTimer) { clearTimeout(streamFlushTimer); streamFlushTimer = null }
   deltaBuffer = ''
   streamState.aiId = null
   streamingText.value = ''
@@ -244,18 +244,15 @@ function scrollToBottom(force = false) {
   })
 }
 
-// ── 流式增量：rAF 帧缓冲 ──
-// 每个 WS delta 不再立即触发 Vue 更新（那会导致 MarkdownView 对全文重新正则解析+ v-html 重绘）。
-// 改为累积到缓冲区，每帧最多 flush 一次，将 markdown 解析频率从"可能数百次/秒"压到 ≤60fps。
+// ── 流式增量：定时批量刷新 ──
+// 生成中只更新稳定纯文本节点，完成后才解析一次 Markdown，避免全文 v-html 反复替换。
 let deltaBuffer = ''
-let streamRafId = null
+let streamFlushTimer = null
 
 function flushDelta() {
-  streamRafId = null
+  streamFlushTimer = null
   if (!deltaBuffer) return
   streamingText.value += deltaBuffer
-  const msg = messages.value.find((item) => item.id === streamState.aiId)
-  if (msg) msg.content += deltaBuffer
   deltaBuffer = ''
   scrollToBottom()
 }
@@ -263,16 +260,15 @@ function flushDelta() {
 function appendDelta(delta) {
   if (!delta) return
   deltaBuffer += delta
-  // 已有待执行的帧回调则只攒数据，不重复调度（同帧内多个 delta 合并一次渲染）
-  if (streamRafId) return
-  streamRafId = requestAnimationFrame(flushDelta)
+  if (streamFlushTimer) return
+  streamFlushTimer = setTimeout(flushDelta, 48)
 }
 
 /** 手动刷空剩余缓冲区（流结束时调用，确保最后一个字符不丢失） */
 function flushStreamBuffer() {
-  if (streamRafId) {
-    cancelAnimationFrame(streamRafId)
-    streamRafId = null
+  if (streamFlushTimer) {
+    clearTimeout(streamFlushTimer)
+    streamFlushTimer = null
   }
   flushDelta()
 }
@@ -332,6 +328,7 @@ async function askNow(preset) {
   loading.value = true
   const aiId = appendAssistantMessage()
   scrollToBottom(true)
+  let pendingSources = []
 
   let token = ''
   try {
@@ -364,36 +361,34 @@ async function askNow(preset) {
       appendDelta(delta || '')
     },
     onSources: (sources) => {
-      const msg = messages.value.find((item) => item.id === streamState.aiId)
-      if (msg) msg.sources = sources || []
+      pendingSources = sources || []
     },
     onDone: (payload) => {
-      // 先刷空缓冲区（确保最后一个 rAF 帧的增量不丢失）
+      // 先刷空缓冲区，再从稳定纯文本一次性切换为最终 Markdown。
       flushStreamBuffer()
-      streamingText.value = ''
       const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
+        msg.content = payload.answer || streamingText.value
         msg.streaming = false
-        if (!msg.content && payload.answer) {
-          msg.content = payload.answer
-        }
-        msg.sources = payload.sources || []
+        msg.sources = payload.sources?.length ? payload.sources : pendingSources
         msg.products = payload.recommended_products || []
       }
+      streamingText.value = ''
       loading.value = false
       // 推荐卡在 done 后挂载，但不强制把视角拉到商品卡；让用户自己继续下滑查看。
       schedulePersist(0)
     },
     onError: (err) => {
       flushStreamBuffer()
-      streamingText.value = ''
       const msg = messages.value.find((item) => item.id === streamState.aiId)
       if (msg) {
+        msg.content = streamingText.value || msg.content
         msg.streaming = false
         if (!msg.content) {
           msg.content = '这次没有成功拿到后端回复。'
         }
       }
+      streamingText.value = ''
       errorText.value = err?.message || '聊天服务异常，请稍后重试。'
       loading.value = false
       scrollToBottom(true)
@@ -439,7 +434,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   closeSocket()
-  if (streamRafId) { cancelAnimationFrame(streamRafId); streamRafId = null }
+  if (streamFlushTimer) { clearTimeout(streamFlushTimer); streamFlushTimer = null }
   if (rafScrollId) cancelAnimationFrame(rafScrollId)
   if (persistTimer) clearTimeout(persistTimer)
 })
@@ -579,6 +574,7 @@ onBeforeUnmount(() => {
 .chat-scroll {
   min-height: 0;
   overflow-y: auto;
+  overflow-anchor: none;
   padding-right: 6px;
 }
 
@@ -759,6 +755,14 @@ onBeforeUnmount(() => {
 .message-plain {
   font-size: 14px;
   line-height: 1.68;
+}
+
+.message-stream-text {
+  min-height: 1.75em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.75;
 }
 
 .reco-panel {

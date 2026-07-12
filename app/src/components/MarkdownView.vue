@@ -1,4 +1,6 @@
 <template>
+  <!-- parseMarkdown 会先转义全部 HTML，再生成受控标签。 -->
+  <!-- eslint-disable-next-line vue/no-v-html -->
   <div class="md-body" v-html="html"></div>
 </template>
 

@@ -12,6 +12,8 @@ venv/
 server/chroma_db/
 server/dev.db
 server/dev.db.bak_*
+server/dev.db-journal
+server/chroma_db.bak_*/
 *.sqlite
 *.sqlite3
 uploads14/
@@ -64,8 +66,13 @@ server/_tmp_*.txt
 
 # 临时 eval token / 登录响应 / 冒烟产物
 _eval_token.txt
+黄金集/**/_eval_token.json
 黄金集/**/login*.json
 黄金集/**/smoke.json
+
+# 一次性诊断脚本（正式维护脚本统一放 scripts/）
+server/_*.py
+/_probe_backend.py
 
 # DeepEval 本地缓存
 **/.deepeval/

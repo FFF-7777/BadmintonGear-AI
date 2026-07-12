@@ -172,7 +172,11 @@ class VectorStoreService:
         for index, document in enumerate(documents):
             section_title = str(document.metadata.get("section_title", "")).strip()
             context_text = f"{file_name} {section_title} {document.page_content}"
-            category = infer_category(context_text) or fallback_category
+            category = (
+                fallback_category
+                if fallback_category in {"racket", "string", "shuttle", "shoes"}
+                else infer_category(context_text) or fallback_category
+            )
             model_tokens = extract_model_tokens(context_text)
             model_aliases: List[str] = []
             for token in model_tokens:

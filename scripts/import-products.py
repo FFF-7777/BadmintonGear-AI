@@ -1,4 +1,4 @@
-"""命令行批量导入装备数据。
+r"""命令行批量导入装备数据。
 
 示例：
 python scripts/import-products.py --file D:\data\racket.xlsx --category-id 1
